@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f6f1e7;
+  --card: #fffdf8;
+  --ink: #1d1b16;
+  --muted: #6f6858;
+  --line: #e4dccb;
+  --safe: #2f6b4f;
+  --held: #b7791f;
+  --stop: #b23a2e;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-safe: var(--safe);
+  --color-held: var(--held);
+  --color-stop: var(--stop);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-serif);
+  --font-mono: var(--font-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #15140f;
+    --card: #1f1d17;
+    --ink: #f1ebdd;
+    --muted: #a39b88;
+    --line: #353127;
+    --safe: #5fae86;
+    --held: #e0a34a;
+    --stop: #e2705f;
+  }
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+@keyframes ring {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-8deg); }
+  40% { transform: rotate(8deg); }
+  60% { transform: rotate(-4deg); }
+  80% { transform: rotate(4deg); }
+}
+.ring { animation: ring 1s ease-in-out infinite; }

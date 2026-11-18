@@ -2,21 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {GuardianVault} from "../src/GuardianVault.sol";
-
-contract MockUSDC is ERC20 {
-    constructor() ERC20("USD Coin", "USDC") {}
-
-    function decimals() public pure override returns (uint8) {
-        return 6;
-    }
-
-    function mint(address to, uint256 amt) external {
-        _mint(to, amt);
-    }
-}
+import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 
 contract GuardianVaultTest is Test {
     MockUSDC usdc;
