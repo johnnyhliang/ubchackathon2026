@@ -53,16 +53,19 @@ async function sign(key, id, approve) {
   return r.json();
 }
 
-const [instant] = await pay(GRANDSON, 20);
-check(instant, "$20 to trusted grandson is instant");
+const [instant] = await pay(GRANDSON, Number(process.env.DEMO_SMALL ?? 1));
+check(instant, "small payment to trusted grandson is instant");
 
 const scammer = privateKeyToAccount(generatePrivateKey()).address;
-const [heldInstant, id] = await pay(scammer, 2000);
-check(!heldInstant, "$2,000 to a brand-new address is held");
+const [heldInstant, id] = await pay(scammer, Number(process.env.DEMO_BIG ?? 10));
+check(!heldInstant, "large payment to a brand-new address is held");
 
-await sleep(2500);
-const state = await (await fetch(`${SERVER}/state`)).json();
-const rec = state.actions.find((a) => a.vaultName === "family" && a.id === id.toString());
+let rec;
+for (let i = 0; i < 20 && !rec?.risk; i++) {
+  await sleep(1000);
+  const state = await (await fetch(`${SERVER}/state`)).json();
+  rec = state.actions.find((a) => a.vaultName === "family" && a.id === id.toString());
+}
 check(!!rec, "server picked up the held payment");
 check(rec?.risk?.level === "high", `risk flagged high: ${rec?.risk?.reasons.join(", ")}`);
 
@@ -76,7 +79,7 @@ check(a.status === 3, "action is Cancelled onchain");
 
 const hp = await (await fetch(`${SERVER}/honeypot/attempt`, {
   method: "POST", headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ to: scammer, amount: 500 }),
+  body: JSON.stringify({ to: scammer, amount: 5 }),
 })).json();
 check(hp.ok, "honeypot theft attempt held and cancelled");
 

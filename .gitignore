@@ -9,3 +9,7 @@ contracts/broadcast/
 # all local env files except templates
 .env*
 !.env.example
+
+# local only
+.claude/
+image.png

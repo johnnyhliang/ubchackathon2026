@@ -262,6 +262,9 @@ app.post("/webhook/quicknode", async (req, res) => {
     return res.status(401).end();
   const body = req.body;
   const logs = Array.isArray(body) ? body.flat(2) : body.logs ?? body.data?.flat?.(2) ?? [];
+  tlog("stream", `QuickNode delivery received: ${logs.length} log(s)`, {
+    block: req.get("batch-start-range") ?? body.metadata?.batch_start_range ?? undefined,
+  });
   for (const l of logs) {
     if (!l?.topics) continue;
     await handleLog(
@@ -357,14 +360,14 @@ async function relay(id, approve, deadline, signature) {
 const STEPS = {
   async trusted() {
     const grandson = getAddress(env.DEMO_TRUSTED);
-    const r = await ownerPay(grandson, 20);
+    const r = await ownerPay(grandson, Number(env.DEMO_SMALL ?? 1));
     tlog("contract", r.instant ? "trusted recipient + within daily limit -> sent instantly" : "unexpected: held", {});
     return r;
   },
   async scam() {
     demo.scammer = privateKeyToAccount(generatePrivateKey()).address;
     tlog("app", "Scam text: \"Your account is compromised. Move your savings to this safe address now.\"", {});
-    const r = await ownerPay(demo.scammer, 2000);
+    const r = await ownerPay(demo.scammer, Number(env.DEMO_BIG ?? 10));
     demo.heldId = r.id;
     tlog("contract", `not trusted / over limit -> HELD as action #${r.id}; funds stay in vault`, {});
     return r;
