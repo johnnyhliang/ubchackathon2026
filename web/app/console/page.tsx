@@ -129,7 +129,7 @@ export default function ConsolePage() {
         <button onClick={() => setDone({})} className="text-xs text-muted underline">Reset steps</button>
       </section>
 
-      <section className="flex min-h-[70vh] flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 font-mono text-[12.5px] text-zinc-200 shadow-xl">
+      <section className="flex min-h-[70vh] flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 font-code text-[12.5px] text-zinc-200 shadow-xl">
         <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2 text-xs text-zinc-500">
           <span>pause-server · chain {state?.chainId ?? "…"} · live</span>
           <div className="flex gap-3">

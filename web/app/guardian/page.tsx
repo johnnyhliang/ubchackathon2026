@@ -117,7 +117,7 @@ function HeldCard({ a, now, explorer, onDone }: { a: Action; now: number; explor
         <button
           onClick={() => decide(false)}
           disabled={!!busy}
-          className="rounded-xl bg-stop px-4 py-3 font-medium text-white disabled:opacity-50"
+          className="rounded-xl bg-ink px-4 py-3 font-semibold text-paper disabled:opacity-50"
         >
           {busy === "cancel" ? "Stopping…" : "Stop payment"}
         </button>

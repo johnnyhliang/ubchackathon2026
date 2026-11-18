@@ -1,46 +1,64 @@
 @import "tailwindcss";
 
+/* Night Watch: night sky behind, white cards on top. One typeface (Instrument Sans).
+   Gold = held. Green = sent/safe. Red only for small "stopped" text, never big buttons. */
 :root {
-  --paper: #f6f1e7;
-  --card: #fffdf8;
-  --ink: #1d1b16;
-  --muted: #6f6858;
-  --line: #e4dccb;
-  --safe: #2f6b4f;
-  --held: #b7791f;
-  --stop: #b23a2e;
+  --night: #070a16;
+  --sky: #0d1430;
+  --on-night: #f3f4fa;
+  --on-night-muted: #a9b1cc;
+  --paper: #f4f6fb; /* input / inset fill inside cards */
+  --card: #ffffff;
+  --ink: #0b1020;
+  --muted: #a9b1cc; /* on night; cards redefine below */
+  --line: rgba(255, 255, 255, 0.12);
+  --held: #9a5a00;
+  --gold: #ffcf5c;
+  --safe: #1f8a5b;
+  --stop: #c2392f;
+  color-scheme: dark;
 }
 
 @theme inline {
+  --color-night: var(--night);
+  --color-sky: var(--sky);
+  --color-on-night: var(--on-night);
+  --color-on-night-muted: var(--on-night-muted);
   --color-paper: var(--paper);
   --color-card: var(--card);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
-  --color-safe: var(--safe);
   --color-held: var(--held);
+  --color-gold: var(--gold);
+  --color-safe: var(--safe);
   --color-stop: var(--stop);
-  --font-sans: var(--font-inter);
-  --font-serif: var(--font-serif);
-  --font-mono: var(--font-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #15140f;
-    --card: #1f1d17;
-    --ink: #f1ebdd;
-    --muted: #a39b88;
-    --line: #353127;
-    --safe: #5fae86;
-    --held: #e0a34a;
-    --stop: #e2705f;
-  }
+  --font-sans: var(--font-instrument);
+  --font-serif: var(--font-instrument);
+  --font-mono: var(--font-instrument);
+  --font-code: var(--font-jetbrains);
 }
 
 body {
-  background: var(--paper);
+  background: linear-gradient(180deg, var(--night) 0%, var(--sky) 70%, #16214a 100%) fixed;
+  color: var(--on-night);
+  min-height: 100vh;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Headlines: tight semibold sans, set via the old font-serif class used across pages */
+.font-serif {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+/* Cards carry their own dark text so pages can place them on the night background */
+.bg-card {
   color: var(--ink);
+  --muted: #6b7285;
+  --line: #e2e5ee;
 }
 
 @keyframes ring {
@@ -50,4 +68,6 @@ body {
   60% { transform: rotate(-4deg); }
   80% { transform: rotate(4deg); }
 }
-.ring { animation: ring 1s ease-in-out infinite; }
+@media (prefers-reduced-motion: no-preference) {
+  .ring { animation: ring 1s ease-in-out infinite; }
+}

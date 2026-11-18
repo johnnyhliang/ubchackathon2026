@@ -132,7 +132,7 @@ export default function ClonePage() {
           <p className="rounded-xl bg-paper p-3 font-serif text-lg leading-snug">{SCRIPT}</p>
           {phase === "record" && (
             <button onClick={recording ? stopRec : startRec}
-              className={`mt-3 rounded-xl px-4 py-2 text-sm font-medium text-white ${recording ? "bg-stop" : "bg-ink"}`}>
+              className={`mt-3 rounded-xl px-4 py-2 text-sm font-medium text-white bg-ink`}>
               {recording ? `Stop and clone (${seconds}s)` : "Start recording"}
             </button>
           )}
@@ -143,7 +143,7 @@ export default function ClonePage() {
           <p className="text-sm italic text-muted">&ldquo;{line}&rdquo;</p>
           {audioUrl && <audio src={audioUrl} controls className="mt-2 w-full" />}
           {phase === "ready" && (
-            <button onClick={attempt} className="mt-3 w-full rounded-xl bg-stop px-4 py-2.5 text-sm font-medium text-white">
+            <button onClick={attempt} className="mt-3 w-full rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-paper">
               Send the clone&apos;s approval to the vault
             </button>
           )}

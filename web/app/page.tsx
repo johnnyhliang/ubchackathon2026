@@ -1,131 +1,93 @@
 "use client";
-import { useState } from "react";
-import { parseUnits, isAddress, type Address } from "viem";
-import { vaultAbi } from "@/lib/abi";
-import { OWNER_KEY, publicClient, walletFor } from "@/lib/chain";
-import { fmtUsd, useNow, useVaultState } from "@/lib/useVaultState";
-import { ActionRow, Card } from "@/components/ui";
+import Link from "next/link";
+import { NightScene } from "@/components/NightScene";
+import { fmtUsd, short, countdown, useNow, useVaultState } from "@/lib/useVaultState";
 
-// Demo contacts. The grandson is trusted on the vault by the setup script.
-const CONTACTS: { name: string; address: string }[] = (process.env.NEXT_PUBLIC_CONTACTS ?? "")
-  .split(",")
-  .filter(Boolean)
-  .map((s) => {
-    const [name, address] = s.split(":");
-    return { name, address };
-  });
-
-export default function WalletPage() {
-  const { state, error, refresh } = useVaultState();
+export default function Landing() {
+  const { state } = useVaultState();
   const now = useNow();
-  const [to, setTo] = useState("");
-  const [amount, setAmount] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ tone: "safe" | "held" | "stop"; text: string } | null>(null);
-
-  const v = state?.vaults.family;
-  const actions = state?.actions.filter((a) => a.vaultName === "family") ?? [];
-
-  async function send() {
-    if (!v) return;
-    if (!isAddress(to)) return setMsg({ tone: "stop", text: "That doesn't look like a valid address." });
-    setBusy(true);
-    setMsg(null);
-    try {
-      const wallet = walletFor(OWNER_KEY);
-      const { request, result } = await publicClient.simulateContract({
-        account: wallet.account,
-        address: v.address,
-        abi: vaultAbi,
-        functionName: "pay",
-        args: [to as Address, parseUnits(amount || "0", 6)],
-      });
-      const hash = await wallet.writeContract(request);
-      await publicClient.waitForTransactionReceipt({ hash });
-      const [instant] = result;
-      setMsg(
-        instant
-          ? { tone: "safe", text: `Sent ${fmtUsd(Number(amount))}.` }
-          : {
-              tone: "held",
-              text: `This payment is on hold for ${Math.round(v.delaySeconds / 60)} minutes. Your guardian has been told.`,
-            }
-      );
-      setAmount("");
-      refresh();
-    } catch (e) {
-      setMsg({ tone: "stop", text: (e as { shortMessage?: string }).shortMessage ?? "Payment failed." });
-    } finally {
-      setBusy(false);
-    }
-  }
+  const held = state?.actions.find((a) => a.vaultName === "family" && a.status === "Pending" && a.kind === "Transfer");
+  const attempts = state?.honeypot.attempts ?? 0;
 
   return (
-    <div className="space-y-5">
-      {error && <p className="text-sm text-stop">{error}</p>}
-      <Card>
-        <div className="text-sm text-muted">Your balance</div>
-        <div className="font-serif text-6xl">{v ? fmtUsd(v.balanceUsd) : "—"}</div>
-        {v && (
-          <p className="mt-2 text-sm text-muted">
-            You can send up to <b className="text-ink">{fmtUsd(v.remainingTodayUsd)}</b> instantly today to people you trust.
-            Anything else waits {Math.round(v.delaySeconds / 60)} minutes so your guardian can check it.
-          </p>
-        )}
-      </Card>
-
-      <Card>
-        <h2 className="mb-3 font-serif text-2xl">Send money</h2>
-        {CONTACTS.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {CONTACTS.map((c) => (
-              <button
-                key={c.address}
-                onClick={() => setTo(c.address)}
-                className={`rounded-full border px-3 py-1 text-sm ${to === c.address ? "border-ink bg-ink text-paper" : "border-line"}`}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <input
-            value={to}
-            onChange={(e) => setTo(e.target.value.trim())}
-            placeholder="Recipient address (0x…)"
-            className="min-w-0 flex-1 rounded-xl border border-line bg-paper px-3 py-2.5 font-mono text-sm"
-          />
-          <input
-            value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-            placeholder="$ amount"
-            inputMode="decimal"
-            className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 sm:w-32"
-          />
-          <button
-            onClick={send}
-            disabled={busy || !amount || !to}
-            className="rounded-xl bg-ink px-5 py-2.5 font-medium text-paper disabled:opacity-40"
-          >
-            {busy ? "Sending…" : "Send"}
-          </button>
+    <div className="relative left-1/2 -mt-24 w-screen -translate-x-1/2">
+      {/* Hero */}
+      <section className="relative isolate overflow-hidden">
+        <div className="absolute inset-0 -z-10">
+          <NightScene />
         </div>
-        {msg && <p className={`mt-3 text-sm text-${msg.tone}`}>{msg.text}</p>}
-      </Card>
+        <div className="mx-auto flex max-w-3xl flex-col items-center px-4 pb-24 pt-40 text-center sm:pb-32">
+          <h1 className="font-serif text-[clamp(44px,8vw,92px)] [text-shadow:0_2px_30px_rgba(7,10,22,.6)]">
+            Scammers rush.
+            <br />
+            We make them wait.
+          </h1>
+          <p className="mt-5 max-w-[40ch] text-lg leading-relaxed text-on-night-muted">
+            Unusual payments hold for ten minutes while someone you trust takes a look. A cloned voice can&apos;t approve them.
+          </p>
 
-      <Card>
-        <h2 className="mb-1 font-serif text-2xl">Activity</h2>
-        {actions.length === 0 ? (
-          <p className="text-sm text-muted">Nothing held yet.</p>
-        ) : (
-          <ul>
-            {actions.map((a) => (
-              <ActionRow key={a.id} a={a} now={now} explorer={state!.explorer} />
-            ))}
-          </ul>
-        )}
-      </Card>
+          <div className="mt-9 w-full max-w-md rounded-2xl bg-card p-4 text-left shadow-[0_30px_60px_rgba(0,0,0,.45)]">
+            <div className="text-sm text-muted">Mom is sending</div>
+            <div className="mt-1.5 flex items-baseline justify-between rounded-xl border border-dashed border-[#c4c8d4] px-3 py-3">
+              <span className="text-3xl font-semibold tracking-tight">{fmtUsd(held?.amountUsd ?? 2000)}</span>
+              <span className="rounded-md bg-[#fff4d6] px-2 py-1 text-sm font-medium text-held">
+                Held · {held ? countdown(held.readyAt, now) : "9:41"}
+              </span>
+            </div>
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {(held?.risk?.reasons ?? ["new address", "never paid before", "20x her daily limit"]).map((r) => (
+                <span key={r} className="rounded-md border border-line px-2 py-0.5 text-xs text-muted">{r}</span>
+              ))}
+            </div>
+            <div className="mt-2 text-xs text-muted">To {held ? short(held.target) : "0x91f2…ae07"}</div>
+            <div className="mt-3 grid grid-cols-[1.4fr_1fr] gap-2">
+              <Link href="/guardian" className="rounded-xl bg-ink px-4 py-3 text-center font-semibold text-on-night">Stop payment</Link>
+              <Link href="/guardian" className="rounded-xl border border-line px-4 py-3 text-center font-semibold">Send now</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="mx-auto max-w-5xl px-4 py-20">
+        <h2 className="font-serif text-4xl">Three steps, ten minutes</h2>
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          {[
+            { t: "It holds", d: "A big amount, or an address Mom has never paid, waits instead of leaving. Everyday payments to family still go straight through." },
+            { t: "You hear about it", d: "Your phone rings. A voice explains what's happening and why it looks wrong, and answers your questions." },
+            { t: "You decide", d: "Stop it or let it through with one tap. That tap is signed by your phone, so a copy of your voice can't do it for you." },
+          ].map((s) => (
+            <div key={s.t} className="rounded-2xl border border-white/10 bg-white/[.04] p-5">
+              <div className="text-lg font-semibold">{s.t}</div>
+              <p className="mt-2 text-on-night-muted">{s.d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Proof */}
+      <section className="mx-auto grid max-w-5xl gap-6 px-4 pb-24 sm:grid-cols-[1.2fr_1fr] sm:items-center">
+        <div>
+          <h2 className="font-serif text-4xl">We handed out the keys</h2>
+          <p className="mt-3 max-w-[46ch] text-on-night-muted">
+            The demo wallet holds real testnet dollars, and anyone can use its owner key to send them anywhere.
+            {attempts > 0 ? ` ${attempts} people have tried so far. None of them got a cent.` : " Nobody has managed to take a cent."}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href="/steal" className="rounded-xl bg-on-night px-5 py-3 font-semibold text-ink">Try to steal it</Link>
+            <Link href="/clone" className="rounded-xl border border-white/20 px-5 py-3 font-semibold">Clone a voice</Link>
+            <Link href="/console" className="rounded-xl px-5 py-3 font-semibold text-on-night-muted hover:text-on-night">See how it works</Link>
+          </div>
+        </div>
+        <div className="rounded-2xl bg-card p-5">
+          <div className="text-sm text-muted">Demo wallet</div>
+          <div className="mt-1 text-4xl font-semibold tracking-tight">{fmtUsd(state?.vaults.honeypot.balanceUsd ?? 1000)}</div>
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4">
+            <div><div className="text-sm text-muted">Attempts</div><div className="text-2xl font-semibold">{attempts}</div></div>
+            <div><div className="text-sm text-muted">Taken</div><div className="text-2xl font-semibold text-safe">$0</div></div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

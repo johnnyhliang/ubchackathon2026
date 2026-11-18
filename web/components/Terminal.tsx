@@ -33,7 +33,7 @@ export function Terminal({ title, className = "", fresh = false }: { title: stri
   useEffect(() => endRef.current?.scrollIntoView({ block: "nearest" }), [lines]);
 
   return (
-    <section className={`flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 font-mono text-[12.5px] text-zinc-200 shadow-xl ${className}`}>
+    <section className={`flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 font-code text-[12.5px] text-zinc-200 shadow-xl ${className}`}>
       <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2 text-xs text-zinc-500">
         <span>{title}</span>
         <div className="flex gap-3">

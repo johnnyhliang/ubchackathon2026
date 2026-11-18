@@ -64,7 +64,7 @@ export default function StealPage() {
             onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
             className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 sm:w-28"
           />
-          <button onClick={attempt} disabled={busy || !to} className="rounded-xl bg-stop px-5 py-2.5 font-medium text-white disabled:opacity-40">
+          <button onClick={attempt} disabled={busy || !to} className="rounded-xl bg-ink px-5 py-2.5 font-semibold text-paper disabled:opacity-40">
             {busy ? "Stealing…" : "Steal it"}
           </button>
         </div>
