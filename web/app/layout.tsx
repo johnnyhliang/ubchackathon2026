@@ -17,6 +17,7 @@ const nav = [
   { href: "/steal", label: "Steal it" },
   { href: "/console", label: "Under the hood" },
   { href: "/clone", label: "Clone a voice" },
+  { href: "/wallets", label: "Balances" },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

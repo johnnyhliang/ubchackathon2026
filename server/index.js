@@ -490,6 +490,44 @@ async function deleteAllClones() {
 process.on("SIGINT", deleteAllClones);
 process.on("SIGTERM", deleteAllClones);
 
+// Live balances and roles for every demo wallet and vault.
+const USDC_ADDR = env.USDC ?? "0x3600000000000000000000000000000000000000";
+const erc20 = [{ type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ name: "a", type: "address" }], outputs: [{ type: "uint256" }] }];
+app.get("/accounts", async (_req, res) => {
+  try {
+    const bal = (a) => pub.readContract({ address: USDC_ADDR, abi: erc20, functionName: "balanceOf", args: [a] }).then(usd);
+    const wallets = [
+      { name: "Relayer", role: "Pays network fees, relays guardian signatures, owns and guards the honeypot", address: relayer.address },
+      env.DEMO_OWNER_KEY && { name: "Owner (Mom)", role: "Sends payments from the family vault", address: privateKeyToAccount(env.DEMO_OWNER_KEY).address },
+      env.DEMO_GUARDIAN_KEY && { name: "Guardian", role: "Signs stop/approve decisions. Holds no money", address: privateKeyToAccount(env.DEMO_GUARDIAN_KEY).address },
+      env.DEMO_TRUSTED && { name: "Grandson Leo", role: "Trusted contact; receives instant payments", address: getAddress(env.DEMO_TRUSTED) },
+    ].filter(Boolean);
+    for (const w of wallets) {
+      w.balanceUsd = await bal(w.address);
+      w.txCount = await pub.getTransactionCount({ address: w.address });
+    }
+    const vaults = [];
+    for (const [name, address] of Object.entries(VAULTS)) {
+      const read = (fn, args) => pub.readContract({ address, abi, functionName: fn, args });
+      const [owner, guardian, dailyLimit, remainingToday, delay, count] = await Promise.all([
+        read("owner"), read("guardian"), read("dailyLimit"), read("remainingToday"), read("delay"), read("actionCount"),
+      ]);
+      let pending = 0;
+      for (let i = 0n; i < count; i++) if ((await read("action", [i])).status === 1) pending++;
+      vaults.push({
+        name: name === "family" ? "Family vault" : "Honeypot vault",
+        address, owner, guardian,
+        balanceUsd: await bal(address),
+        dailyLimitUsd: usd(dailyLimit), remainingTodayUsd: usd(remainingToday),
+        delaySeconds: Number(delay), actions: Number(count), pending,
+      });
+    }
+    res.json({ chainId: chain.id, explorer: EXPLORER, usdc: USDC_ADDR, wallets, vaults });
+  } catch (e) {
+    res.status(500).json({ error: e.shortMessage ?? e.message });
+  }
+});
+
 app.get("/logs", (_req, res) => res.json(logLines));
 
 app.post("/demo/:step", async (req, res) => {
