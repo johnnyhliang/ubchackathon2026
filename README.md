@@ -98,6 +98,18 @@ Then show the consumer side:
 2. **`/guardian`** (open on a phone or a second window): the held payment appears with its warning signs and a countdown. Tap **Answer** for the ElevenLabs voice briefing. Tap **"try approving with a cloned voice"** to see it rejected. Tap **Stop payment**.
 3. **`/steal`**: anyone enters an address and tries to drain the honeypot; the counter goes up and "Stolen" stays $0.
 
+### Live voice-clone attack (`/clone`)
+
+Shows that a *perfect* copy of a voice still can't move money. Needs `ELEVENLABS_API_KEY` on a plan that includes Instant Voice Cloning.
+
+1. A volunteer types their first name and ticks the consent box.
+2. They tap **Start recording**, read the on-screen script (about 30 s), and tap **Stop and clone**. The server uploads the sample to ElevenLabs Instant Voice Cloning (`POST /v1/voices/add`).
+3. The clone plays automatically: *"Hi, it's {name}. I'm the guardian. Approve the two thousand dollar payment…"* (`POST /v1/text-to-speech/{voice_id}`).
+4. Tap **Send the clone's approval to the vault**. If no scam payment is held, one is created first. The terminal shows the recovered signer ≠ guardian and **decideBySig REVERTED: BadSignature**.
+5. Tap **Delete the cloned voice** (`DELETE /v1/voices/{voice_id}`). Clones are also deleted when the page closes or the server stops.
+
+Backup for a noisy room: clone your own voice beforehand and do the run-through yourself.
+
 Suggested video order (2–3 min): `/steal` counter as the hook → Mom's wallet scam → guardian phone rings and voice explains → cloned voice rejected → Stop → `/console` replay for the technical audience → architecture slide.
 
 Resetting a local demo: stop `anvil`, start it again, rerun `DeployLocal.s.sol` (same addresses every time) and restart the server.

@@ -219,7 +219,7 @@ if (env.LOCAL_WATCH !== "false") {
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "5mb", type: "application/json" }));
 
 app.get("/stream", (req, res) => {
   res.set({ "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
@@ -397,6 +397,95 @@ const STEPS = {
     return relay(result, false, deadline, signature);
   },
 };
+
+// ------------------------------------------------- live voice-clone demo
+// A volunteer records ~30s, ElevenLabs clones it, the clone "approves" a held
+// payment, the contract rejects it, and the clone is deleted. Consent required.
+const EL = "https://api.elevenlabs.io/v1";
+const clones = new Set();
+const elKey = () => {
+  if (!env.ELEVENLABS_API_KEY) throw new Error("ELEVENLABS_API_KEY not set");
+  return env.ELEVENLABS_API_KEY;
+};
+
+app.post("/clone/create", express.raw({ type: "audio/*", limit: "20mb" }), async (req, res) => {
+  try {
+    if (req.query.consent !== "yes") throw new Error("volunteer consent required");
+    const type = req.get("content-type") ?? "audio/webm";
+    const form = new FormData();
+    form.append("name", `pause-demo-${Date.now()}`);
+    form.append("files", new Blob([req.body], { type }), `sample.${type.includes("mp4") ? "mp4" : "webm"}`);
+    form.append("remove_background_noise", "true");
+    tlog("voice", `uploading ${(req.body.length / 1024).toFixed(0)} KB voice sample to ElevenLabs Instant Voice Cloning`, { endpoint: "POST /v1/voices/add" });
+    const r = await fetch(`${EL}/voices/add`, { method: "POST", headers: { "xi-api-key": elKey() }, body: form });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail?.message ?? `ElevenLabs ${r.status}`);
+    clones.add(j.voice_id);
+    tlog("voice", `voice cloned: ${j.voice_id}`, { note: "the clone now sounds like the volunteer" });
+    res.json({ ok: true, voiceId: j.voice_id });
+  } catch (e) {
+    tlog("voice", `clone failed: ${e.message}`, {});
+    res.status(400).json({ ok: false, error: e.message });
+  }
+});
+
+app.post("/clone/speak", async (req, res) => {
+  try {
+    const { voiceId, text } = req.body;
+    if (!clones.has(voiceId)) throw new Error("unknown clone");
+    tlog("voice", `cloned voice says: "${text}"`, { endpoint: `POST /v1/text-to-speech/${voiceId}` });
+    const r = await fetch(`${EL}/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
+      method: "POST",
+      headers: { "xi-api-key": elKey(), "Content-Type": "application/json" },
+      body: JSON.stringify({ text, model_id: env.ELEVENLABS_TTS_MODEL ?? "eleven_multilingual_v2" }),
+    });
+    if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${await r.text()}`);
+    res.set("Content-Type", "audio/mpeg").send(Buffer.from(await r.arrayBuffer()));
+  } catch (e) {
+    res.status(400).json({ ok: false, error: e.message });
+  }
+});
+
+// The clone tries to approve the held scam payment (creating one if needed).
+app.post("/clone/attempt", async (req, res) => {
+  try {
+    if (demo.heldId === null) await STEPS.scam();
+    const held = await pub.readContract({ address: VAULTS.family, abi, functionName: "action", args: [BigInt(demo.heldId)] });
+    if (held.status !== 1) await STEPS.scam();
+    tlog("voice", "the cloned voice demands approval; it can produce sound, not the guardian's key", {
+      bestTheScammerHas: "a signature from a key they control",
+    });
+    const { deadline, signature } = await signDecision(generatePrivateKey(), demo.heldId, true);
+    const r = await relay(demo.heldId, true, deadline, signature);
+    res.json({ ...r, actionId: String(demo.heldId) });
+  } catch (e) {
+    res.status(400).json({ ok: false, error: revertName(e) });
+  }
+});
+
+// POST alias so the browser can delete via navigator.sendBeacon when the tab closes.
+app.post("/clone/:voiceId/delete", (req, res) => deleteClone(req, res));
+app.delete("/clone/:voiceId", (req, res) => deleteClone(req, res));
+async function deleteClone(req, res) {
+  try {
+    const id = req.params.voiceId;
+    const r = await fetch(`${EL}/voices/${id}`, { method: "DELETE", headers: { "xi-api-key": elKey() } });
+    clones.delete(id);
+    tlog("voice", r.ok ? `clone ${id} deleted from ElevenLabs` : `delete returned ${r.status}`, { endpoint: `DELETE /v1/voices/${id}` });
+    res.json({ ok: r.ok });
+  } catch (e) {
+    res.status(400).json({ ok: false, error: e.message });
+  }
+}
+
+// Never leave a volunteer's voice behind if the server stops.
+async function deleteAllClones() {
+  await Promise.allSettled([...clones].map((id) =>
+    fetch(`${EL}/voices/${id}`, { method: "DELETE", headers: { "xi-api-key": env.ELEVENLABS_API_KEY } })));
+  process.exit(0);
+}
+process.on("SIGINT", deleteAllClones);
+process.on("SIGTERM", deleteAllClones);
 
 app.get("/logs", (_req, res) => res.json(logLines));
 
