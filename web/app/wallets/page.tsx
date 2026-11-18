@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { SERVER } from "@/lib/chain";
 import { fmtUsd } from "@/lib/useVaultState";
 
-type Wallet = { name: string; role: string; address: string; balanceUsd: number; txCount: number };
+type Wallet = { name: string; role: string; address: string; balanceUsd: number; txCount: number; scammer?: boolean };
 type Vault = {
   name: string; address: string; owner: string; guardian: string; balanceUsd: number;
   dailyLimitUsd: number; remainingTodayUsd: number; delaySeconds: number; actions: number; pending: number;
@@ -61,7 +61,7 @@ export default function WalletsPage() {
             <div key={w.address} className="rounded-2xl bg-card p-4">
               <div className="flex items-baseline justify-between gap-2">
                 <div className="font-semibold">{w.name}</div>
-                <div className="text-xl font-semibold">{fmtUsd(w.balanceUsd)}</div>
+                <div className={`text-xl font-semibold ${w.scammer && w.balanceUsd >= 0.1 ? "text-stop" : ""}`}>{fmtUsd(w.balanceUsd)}</div>
               </div>
               <p className="mt-1 text-sm text-muted">{w.role}</p>
               <Addr a={w.address} explorer={data.explorer} />

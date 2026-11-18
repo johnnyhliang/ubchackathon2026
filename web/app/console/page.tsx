@@ -9,14 +9,20 @@ const STEPS = [
   {
     key: "trusted",
     title: "Normal day",
-    what: "Mom sends $20 to her grandson.",
+    what: "Mom sends $1 to her grandson.",
     why: "Trusted recipient, inside the daily limit: one call, sent instantly. Protection costs nothing for everyday use.",
   },
   {
+    key: "unprotected",
+    title: "Without Pause",
+    what: "A scam text works. Mom sends $2 from her ordinary wallet to the scammer.",
+    why: "No vault, no rules. The money reaches the scammer in one block and nobody can reverse it. Watch the scammer's balance go up.",
+  },
+  {
     key: "scam",
-    title: "The scam",
-    what: "A text says her account is compromised. She sends $2,000 to a \"safe\" address.",
-    why: "New address, 20x the limit: the vault queues it instead of paying. The event reaches the server, which scores the risk and alerts the guardian.",
+    title: "The same scam, with Pause",
+    what: "Same text, same scammer. This time she sends $10 from her Pause vault.",
+    why: "Unknown address, 5x the limit: the vault holds it instead of paying. The server scores the risk and alerts the guardian. The scammer's balance doesn't move.",
   },
   {
     key: "deepfake",
@@ -36,6 +42,18 @@ const STEPS = [
     what: "The scammer tells Mom to make them her guardian instead.",
     why: "Weakening protection is itself held, so the current guardian sees it and cancels it too.",
   },
+  {
+    key: "ignored",
+    title: "Nobody answers",
+    what: "Another scam payment, and this time the guardian misses the alert.",
+    why: "Pause buys time; it doesn't decide for you. Once the 10-minute hold runs out with no answer, the payment goes through. Run this, wait for the hold, then run it again.",
+  },
+  {
+    key: "refund",
+    title: "Reset the demo",
+    what: "Send everything the scammer collected back to Mom.",
+    why: "Only possible here because we hold the scammer's key. In real life, money that reaches a scammer is gone.",
+  },
 ] as const;
 
 const LAYER_COLOR: Record<string, string> = {
@@ -52,7 +70,20 @@ export default function ConsolePage() {
   const { state, refresh } = useVaultState();
   const [lines, setLines] = useState<Line[]>([]);
   const [running, setRunning] = useState<string | null>(null);
-  const [done, setDone] = useState<Record<string, "ok" | "blocked" | "error">>({});
+  const [done, setDone] = useState<Record<string, "ok" | "blocked" | "error" | "waiting">>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [scammer, setScammer] = useState<number | null>(null);
+
+  async function loadScammer() {
+    try {
+      const j = await fetch(`${SERVER}/accounts`).then((r) => r.json());
+      const s = j.wallets?.find((w: { scammer?: boolean }) => w.scammer);
+      setScammer(s ? s.balanceUsd : null);
+    } catch {}
+  }
+  useEffect(() => {
+    loadScammer();
+  }, []);
   const [expanded, setExpanded] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -73,9 +104,12 @@ export default function ConsolePage() {
   async function run(key: string) {
     setRunning(key);
     const r = await fetch(`${SERVER}/demo/${key}`, { method: "POST" }).then((r) => r.json());
-    setDone((d) => ({ ...d, [key]: r.ok ? "ok" : r.error === "BadSignature" ? "blocked" : "error" }));
+    const status = r.ok ? "ok" : r.error === "BadSignature" ? "blocked" : r.secondsLeft ? "waiting" : "error";
+    setDone((d) => ({ ...d, [key]: status }));
+    setNotes((n) => ({ ...n, [key]: r.ok ? "" : r.error ?? "" }));
     setRunning(null);
     refresh();
+    loadScammer();
   }
 
   const next = STEPS.find((s) => !done[s.key])?.key;
@@ -91,8 +125,8 @@ export default function ConsolePage() {
 
         {v && (
           <div className="grid grid-cols-3 gap-2 rounded-2xl border border-line bg-card p-3 text-center text-xs">
-            <div><div className="text-muted">Vault</div><div className="font-serif text-xl">{fmtUsd(v.balanceUsd)}</div></div>
-            <div><div className="text-muted">Instant left</div><div className="font-serif text-xl">{fmtUsd(v.remainingTodayUsd)}</div></div>
+            <div><div className="text-muted">Mom&apos;s vault</div><div className="font-serif text-xl">{fmtUsd(v.balanceUsd)}</div></div>
+            <div><div className="text-muted">Scammer</div><div className={`font-serif text-xl ${scammer ? "text-stop" : ""}`}>{scammer === null ? "—" : fmtUsd(scammer)}</div></div>
             <div><div className="text-muted">Hold</div><div className="font-serif text-xl">{Math.round(v.delaySeconds / 60)} min</div></div>
           </div>
         )}
@@ -108,7 +142,7 @@ export default function ConsolePage() {
                     <div className="text-xs text-muted">Step {i + 1}</div>
                     <div className="font-medium">{s.title}</div>
                   </div>
-                  {status ? (
+                  {status && status !== "waiting" ? (
                     <span className={`text-xs font-medium ${status === "error" ? "text-stop" : "text-safe"}`}>
                       {status === "blocked" ? "blocked ✓" : status === "ok" ? "done ✓" : "error"}
                     </span>
@@ -118,17 +152,18 @@ export default function ConsolePage() {
                       disabled={!!running}
                       className={`rounded-full px-3 py-1 text-xs font-medium disabled:opacity-40 ${active ? "bg-ink text-paper" : "border border-line"}`}
                     >
-                      {running === s.key ? "running…" : "Run"}
+                      {running === s.key ? "running…" : status === "waiting" ? "Check again" : "Run"}
                     </button>
                   )}
                 </div>
                 <p className="mt-2 text-sm">{s.what}</p>
                 {(active || status) && <p className="mt-1 text-xs text-muted">{s.why}</p>}
+                {notes[s.key] && <p className={`mt-1 text-xs ${status === "waiting" ? "text-held" : "text-stop"}`}>{notes[s.key]}</p>}
               </li>
             );
           })}
         </ol>
-        <button onClick={() => setDone({})} className="text-xs text-muted underline">Reset steps</button>
+        <button onClick={() => { setDone({}); setNotes({}); }} className="text-xs text-muted underline">Reset steps</button>
       </section>
 
       <section className="flex min-h-[70vh] flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 font-code text-[12.5px] text-zinc-200 shadow-xl">

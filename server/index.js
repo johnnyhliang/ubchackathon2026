@@ -357,6 +357,15 @@ async function relay(id, approve, deadline, signature) {
   }
 }
 
+// The demo scammer: a fixed, visible wallet when DEMO_SCAMMER_KEY is set, else a fresh one.
+const scammerAccount = env.DEMO_SCAMMER_KEY ? privateKeyToAccount(env.DEMO_SCAMMER_KEY) : null;
+const scammerAddress = () => scammerAccount?.address ?? privateKeyToAccount(generatePrivateKey()).address;
+const usdcBalance = (a) => pub.readContract({ address: USDC_ADDR, abi: erc20, functionName: "balanceOf", args: [a] });
+async function logScammer() {
+  if (!scammerAccount) return;
+  tlog("chain", `scammer wallet now holds $${usd(await usdcBalance(scammerAccount.address)).toFixed(2)}`, { address: scammerAccount.address });
+}
+
 const STEPS = {
   async trusted() {
     const grandson = getAddress(env.DEMO_TRUSTED);
@@ -365,12 +374,63 @@ const STEPS = {
     return r;
   },
   async scam() {
-    demo.scammer = privateKeyToAccount(generatePrivateKey()).address;
+    demo.scammer = scammerAddress();
     tlog("app", "Scam text: \"Your account is compromised. Move your savings to this safe address now.\"", {});
     const r = await ownerPay(demo.scammer, Number(env.DEMO_BIG ?? 10));
     demo.heldId = r.id;
     tlog("contract", `not trusted / over limit -> HELD as action #${r.id}; funds stay in vault`, {});
+    await logScammer();
     return r;
+  },
+  // The same scam against an ordinary wallet: no vault, no hold, money gone.
+  async unprotected() {
+    const owner = createWalletClient({ chain, transport: http(), account: privateKeyToAccount(env.DEMO_OWNER_KEY) });
+    const to = scammerAddress();
+    const amt = parseUnits(String(env.DEMO_UNPROTECTED ?? 2), 6);
+    tlog("app", `Without Pause: Mom sends $${usd(amt)} straight from her ordinary wallet`, { call: "USDC.transfer(scammer, amount)", note: "no vault, no rules" });
+    const hash = await owner.writeContract({ address: USDC_ADDR, abi: erc20Transfer, functionName: "transfer", args: [to, amt] });
+    const rcpt = await pub.waitForTransactionReceipt({ hash });
+    tlog("chain", `SCAM SUCCEEDED: $${usd(amt)} arrived in block ${rcpt.blockNumber}. Nobody can reverse it.`, { tx: hash });
+    await logScammer();
+    return { ok: true, hash, scammer: to };
+  },
+  // Guardian never answers: once the hold expires, anyone can execute the payment.
+  async ignored() {
+    let a = demo.heldId === null ? null
+      : await pub.readContract({ address: VAULTS.family, abi, functionName: "action", args: [BigInt(demo.heldId)] });
+    if (!a || a.status !== 1) {
+      tlog("app", "starting a fresh scam payment that the guardian will ignore", {});
+      await STEPS.scam();
+      a = await pub.readContract({ address: VAULTS.family, abi, functionName: "action", args: [BigInt(demo.heldId)] });
+    }
+    const left = Number(a.readyAt) - Math.floor(Date.now() / 1000);
+    if (left > 0) {
+      tlog("contract", `guardian hasn't answered; hold on #${demo.heldId} expires in ${Math.ceil(left / 60)} min`, { secondsLeft: left });
+      return { ok: false, error: `Hold still running: ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} left`, secondsLeft: left };
+    }
+    tlog("app", "Nobody answered the alert. The hold has expired.", {});
+    const hash = await wallet.writeContract({ address: VAULTS.family, abi, functionName: "execute", args: [BigInt(demo.heldId)] });
+    await pub.waitForTransactionReceipt({ hash });
+    tlog("contract", `hold expired, action #${demo.heldId} executed: the scammer got paid`, { tx: hash });
+    await logScammer();
+    return { ok: true, hash };
+  },
+  // Give the scammer's winnings back to Mom so the demo can run again.
+  async refund() {
+    if (!scammerAccount) throw new Error("no fixed scammer wallet configured");
+    const bal = await usdcBalance(scammerAccount.address);
+    const fee = parseUnits("0.05", 6);
+    if (bal <= fee) {
+      tlog("app", "scammer wallet is empty, nothing to return", {});
+      return { ok: true, returned: 0 };
+    }
+    const sc = createWalletClient({ chain, transport: http(), account: scammerAccount });
+    const back = bal - fee;
+    const hash = await sc.writeContract({ address: USDC_ADDR, abi: erc20Transfer, functionName: "transfer", args: [privateKeyToAccount(env.DEMO_OWNER_KEY).address, back] });
+    await pub.waitForTransactionReceipt({ hash });
+    tlog("app", `demo reset: $${usd(back).toFixed(2)} returned from scammer to Mom`, { tx: hash });
+    await logScammer();
+    return { ok: true, returned: usd(back) };
   },
   async deepfake() {
     if (demo.heldId === null) throw new Error("run the scam step first");
@@ -493,6 +553,7 @@ process.on("SIGTERM", deleteAllClones);
 // Live balances and roles for every demo wallet and vault.
 const USDC_ADDR = env.USDC ?? "0x3600000000000000000000000000000000000000";
 const erc20 = [{ type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ name: "a", type: "address" }], outputs: [{ type: "uint256" }] }];
+const erc20Transfer = [{ type: "function", name: "transfer", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] }];
 app.get("/accounts", async (_req, res) => {
   try {
     const bal = (a) => pub.readContract({ address: USDC_ADDR, abi: erc20, functionName: "balanceOf", args: [a] }).then(usd);
@@ -501,6 +562,7 @@ app.get("/accounts", async (_req, res) => {
       env.DEMO_OWNER_KEY && { name: "Owner (Mom)", role: "Sends payments from the family vault", address: privateKeyToAccount(env.DEMO_OWNER_KEY).address },
       env.DEMO_GUARDIAN_KEY && { name: "Guardian", role: "Signs stop/approve decisions. Holds no money", address: privateKeyToAccount(env.DEMO_GUARDIAN_KEY).address },
       env.DEMO_TRUSTED && { name: "Grandson Leo", role: "Trusted contact; receives instant payments", address: getAddress(env.DEMO_TRUSTED) },
+      scammerAccount && { name: "Scammer", role: "Where every scam in the demo tries to send the money", address: scammerAccount.address, scammer: true },
     ].filter(Boolean);
     for (const w of wallets) {
       w.balanceUsd = await bal(w.address);

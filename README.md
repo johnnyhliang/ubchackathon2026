@@ -87,10 +87,15 @@ Open **http://localhost:3000/console** ("Under the hood"). The left side steps t
 | Step | Click | What the terminal shows |
 |---|---|---|
 | 1. Normal day | Run "Normal day" | `pay()` call → tx mined → `InstantPayment`. Trusted + under limit = instant |
-| 2. The scam | Run "The scam" | `pay()` → **HELD as action #n** → `ActionQueued` event arrives (poller or QuickNode) → risk scored HIGH with reasons → guardian alerted |
-| 3. The deepfake | Run "The deepfake" | EIP-712 decision received → `recoveredSigner` ≠ `vaultGuardian` (`match: false`) → **decideBySig REVERTED: BadSignature** |
-| 4. The real guardian | Run "The real guardian" | Signature from the guardian's key (`match: true`) → cancelled → vault balance unchanged |
-| 5. The workaround | Run "The workaround" | `requestGuardian(scammer)` is itself held → guardian cancels it |
+| 2. Without Pause | Run "Without Pause" | Plain `USDC.transfer` from Mom's ordinary wallet → **SCAM SUCCEEDED** → scammer balance goes up |
+| 3. Same scam, with Pause | Run "The same scam, with Pause" | `pay()` → **HELD as action #n** → `ActionQueued` event arrives (poller or QuickNode) → risk scored HIGH → guardian alerted. Scammer balance unchanged |
+| 4. The deepfake | Run "The deepfake" | EIP-712 decision received → `recoveredSigner` ≠ `vaultGuardian` (`match: false`) → **decideBySig REVERTED: BadSignature** |
+| 5. The real guardian | Run "The real guardian" | Signature from the guardian's key (`match: true`) → cancelled → vault balance unchanged |
+| 6. The workaround | Run "The workaround" | `requestGuardian(scammer)` is itself held → guardian cancels it |
+| 7. Nobody answers | Run "Nobody answers", wait 10 min, "Check again" | A fresh scam payment is held; once the hold expires with no answer, it executes and the scammer gets paid. Pause buys time, it doesn't decide for you |
+| 8. Reset | Run "Reset the demo" | Scammer's winnings go back to Mom (possible only because the demo holds the scammer's key) |
+
+The scammer is a fixed, visible wallet (`0x5a94468C97faAefa1ff47B1605CE03aaFDE47F43`), shown on the Balances page and in the walkthrough's stats box. Mom's ordinary wallet keeps about $20 for the "Without Pause" step.
 
 Then show the consumer side:
 
