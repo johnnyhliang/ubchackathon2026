@@ -15,8 +15,11 @@ import {
   http,
   isAddress,
   parseUnits,
+  recoverTypedDataAddress,
+  BaseError,
+  ContractFunctionRevertedError,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 const abi = JSON.parse(fs.readFileSync(new URL("./abi.json", import.meta.url)));
 const env = process.env;
@@ -56,6 +59,37 @@ function broadcast(type, data) {
 }
 
 const usd = (v) => Number(formatUnits(BigInt(v), 6));
+
+// ------------------------------------------------------ terminal log bus
+// Every interesting step is emitted as a structured line for the /console page.
+// layer: app | chain | stream | risk | voice | relay | contract
+const logLines = [];
+let logSeq = 0;
+function tlog(layer, msg, data) {
+  const line = { seq: ++logSeq, t: Date.now(), layer, msg, data };
+  logLines.push(line);
+  if (logLines.length > 500) logLines.shift();
+  broadcast("log", line);
+  console.log(`[${layer}] ${msg}`);
+}
+
+function revertName(e) {
+  if (e instanceof BaseError) {
+    const r = e.walk((x) => x instanceof ContractFunctionRevertedError);
+    if (r?.data?.errorName) return r.data.errorName;
+  }
+  return e.shortMessage ?? e.message;
+}
+
+const DECISION_TYPES = {
+  Decision: [
+    { name: "vault", type: "address" },
+    { name: "actionId", type: "uint256" },
+    { name: "approve", type: "bool" },
+    { name: "deadline", type: "uint256" },
+  ],
+};
+const domainFor = (vault) => ({ name: "GuardianVault", version: "1", chainId: chain.id, verifyingContract: vault });
 
 async function riskFacts(vault, target, amount) {
   const [nonce, code, trusted, dailyLimit] = await Promise.all([
@@ -100,6 +134,12 @@ async function handleLog(log, source) {
   const vault = getAddress(log.address);
   const id = ev.args.id !== undefined ? ev.args.id.toString() : null;
   const k = `${vault}:${id}`;
+  tlog(source === "quicknode" ? "stream" : "chain", `${ev.eventName} on ${name} vault`, {
+    via: source === "quicknode" ? "QuickNode Stream webhook" : "RPC poller",
+    block: log.blockNumber?.toString?.(),
+    tx: log.transactionHash,
+    args: Object.fromEntries(Object.entries(ev.args).map(([a, b]) => [a, typeof b === "bigint" ? b.toString() : b])),
+  });
 
   if (ev.eventName === "ActionQueued") {
     const rec = {
@@ -115,8 +155,19 @@ async function handleLog(log, source) {
       txHash: log.transactionHash,
       source,
     };
-    if (rec.kind === "Transfer") rec.risk = await riskFacts(vault, rec.target, ev.args.amount);
+    if (rec.kind === "Transfer") {
+      rec.risk = await riskFacts(vault, rec.target, ev.args.amount);
+      tlog("risk", `scored held payment #${id}: ${rec.risk.level.toUpperCase()}`, {
+        reasons: rec.risk.reasons,
+        recipientTxCount: rec.risk.recipientTxCount,
+      });
+    }
     rec.summary = summary(rec);
+    if (name === "family")
+      tlog("voice", "guardian alerted: incoming call offered with ElevenLabs agent", {
+        dynamicVariables: { amount: `$${rec.amountUsd}`, reasons: rec.risk?.reasons.join("; ") ?? rec.summary },
+        note: "agent has no approve/cancel tool, voice cannot move money",
+      });
     actions.set(k, rec);
     broadcast("action", rec);
     console.log(`[${source}] held #${id} on ${name}: ${rec.summary}`);
@@ -223,8 +274,9 @@ app.post("/webhook/quicknode", async (req, res) => {
 
 // Relay a guardian decision signed in the guardian's browser.
 app.post("/relay/decision", async (req, res) => {
+  const { vault, id, approve, deadline, signature } = req.body;
   try {
-    const { vault, id, approve, deadline, signature } = req.body;
+    await logSignature(getAddress(vault), id, approve, deadline, signature);
     const hash = await wallet.writeContract({
       address: getAddress(vault),
       abi,
@@ -237,9 +289,128 @@ app.post("/relay/decision", async (req, res) => {
       execHash = await wallet.writeContract({ address: getAddress(vault), abi, functionName: "execute", args: [BigInt(id)] });
       await pub.waitForTransactionReceipt({ hash: execHash });
     }
+    tlog("contract", `decideBySig accepted: action #${id} ${approve ? "approved + executed" : "cancelled"}`, { tx: hash, execTx: execHash });
     res.json({ ok: true, hash, execHash });
   } catch (e) {
-    res.status(400).json({ ok: false, error: e.shortMessage ?? e.message });
+    const why = revertName(e);
+    tlog("contract", `decideBySig REVERTED: ${why}`, { action: id, approve });
+    res.status(400).json({ ok: false, error: why });
+  }
+});
+
+async function logSignature(vault, id, approve, deadline, signature) {
+  const message = { vault, actionId: BigInt(id), approve: Boolean(approve), deadline: BigInt(deadline) };
+  const signer = await recoverTypedDataAddress({
+    domain: domainFor(vault), types: DECISION_TYPES, primaryType: "Decision", message, signature,
+  });
+  const guardian = await pub.readContract({ address: vault, abi, functionName: "guardian" });
+  tlog("relay", `EIP-712 Decision received (${approve ? "approve" : "cancel"} #${id})`, {
+    typedData: { vault, actionId: String(id), approve: Boolean(approve), deadline: String(deadline) },
+    signature: `${signature.slice(0, 18)}…`,
+    recoveredSigner: signer,
+    vaultGuardian: guardian,
+    match: signer.toLowerCase() === guardian.toLowerCase(),
+  });
+}
+
+// ------------------------------------------------------ guided demo console
+// Server-driven scenario so the /console page can step through every layer.
+// Uses demo-only keys (DEMO_OWNER_KEY / DEMO_GUARDIAN_KEY): testnet or local only.
+const demo = { scammer: null, heldId: null, guardianSwapId: null };
+
+async function ownerPay(to, usdAmount) {
+  const owner = createWalletClient({ chain, transport: http(), account: privateKeyToAccount(env.DEMO_OWNER_KEY) });
+  const args = [to, parseUnits(String(usdAmount), 6)];
+  tlog("app", `Mom taps Send: $${usdAmount} to ${to.slice(0, 10)}…`, { call: "GuardianVault.pay(to, amount)", args: [to, args[1].toString()] });
+  const { request, result } = await pub.simulateContract({ account: owner.account, address: VAULTS.family, abi, functionName: "pay", args });
+  const hash = await owner.writeContract(request);
+  const rcpt = await pub.waitForTransactionReceipt({ hash });
+  tlog("chain", `tx mined in block ${rcpt.blockNumber}`, { tx: hash, gasUsed: rcpt.gasUsed.toString(), gasToken: "USDC" });
+  return { instant: result[0], id: result[1], hash };
+}
+
+async function signDecision(key, id, approve) {
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 300);
+  const signature = await privateKeyToAccount(key).signTypedData({
+    domain: domainFor(VAULTS.family), types: DECISION_TYPES, primaryType: "Decision",
+    message: { vault: VAULTS.family, actionId: BigInt(id), approve, deadline },
+  });
+  return { deadline, signature };
+}
+
+async function relay(id, approve, deadline, signature) {
+  try {
+    await logSignature(VAULTS.family, id, approve, deadline, signature);
+    const hash = await wallet.writeContract({
+      address: VAULTS.family, abi, functionName: "decideBySig", args: [BigInt(id), approve, deadline, signature],
+    });
+    await pub.waitForTransactionReceipt({ hash });
+    tlog("contract", `decideBySig accepted: action #${id} ${approve ? "approved" : "cancelled"}`, { tx: hash });
+    return { ok: true, hash };
+  } catch (e) {
+    const why = revertName(e);
+    tlog("contract", `decideBySig REVERTED: ${why}`, { action: String(id) });
+    return { ok: false, error: why };
+  }
+}
+
+const STEPS = {
+  async trusted() {
+    const grandson = getAddress(env.DEMO_TRUSTED);
+    const r = await ownerPay(grandson, 20);
+    tlog("contract", r.instant ? "trusted recipient + within daily limit -> sent instantly" : "unexpected: held", {});
+    return r;
+  },
+  async scam() {
+    demo.scammer = privateKeyToAccount(generatePrivateKey()).address;
+    tlog("app", "Scam text: \"Your account is compromised. Move your savings to this safe address now.\"", {});
+    const r = await ownerPay(demo.scammer, 2000);
+    demo.heldId = r.id;
+    tlog("contract", `not trusted / over limit -> HELD as action #${r.id}; funds stay in vault`, {});
+    return r;
+  },
+  async deepfake() {
+    if (demo.heldId === null) throw new Error("run the scam step first");
+    tlog("voice", "Cloned voice on a call: \"Mom, it's me, just approve it.\"", { note: "scammer has a voice, not the guardian's key" });
+    const { deadline, signature } = await signDecision(generatePrivateKey(), demo.heldId, true);
+    return relay(demo.heldId, true, deadline, signature);
+  },
+  async cancel() {
+    if (demo.heldId === null) throw new Error("run the scam step first");
+    tlog("app", "Real guardian taps Stop on their phone; device signs the decision", {});
+    const { deadline, signature } = await signDecision(env.DEMO_GUARDIAN_KEY, demo.heldId, false);
+    const r = await relay(demo.heldId, false, deadline, signature);
+    const bal = await pub.readContract({ address: VAULTS.family, abi, functionName: "balance" });
+    tlog("chain", `vault balance still $${usd(bal).toLocaleString()}`, {});
+    return r;
+  },
+  async swapGuardian() {
+    const owner = createWalletClient({ chain, transport: http(), account: privateKeyToAccount(env.DEMO_OWNER_KEY) });
+    tlog("app", "Scammer, on the phone with Mom, tells her to change her guardian to them", { call: "requestGuardian(scammer)" });
+    const target = demo.scammer ?? privateKeyToAccount(generatePrivateKey()).address;
+    const { request, result } = await pub.simulateContract({ account: owner.account, address: VAULTS.family, abi, functionName: "requestGuardian", args: [target] });
+    const hash = await owner.writeContract(request);
+    await pub.waitForTransactionReceipt({ hash });
+    demo.guardianSwapId = result;
+    tlog("contract", `weakening protection is itself HELD as action #${result}`, { tx: hash });
+    const { deadline, signature } = await signDecision(env.DEMO_GUARDIAN_KEY, result, false);
+    return relay(result, false, deadline, signature);
+  },
+};
+
+app.get("/logs", (_req, res) => res.json(logLines));
+
+app.post("/demo/:step", async (req, res) => {
+  const fn = STEPS[req.params.step];
+  if (!fn) return res.status(404).json({ error: "unknown step" });
+  if (!env.DEMO_OWNER_KEY || !env.DEMO_GUARDIAN_KEY) return res.status(503).json({ error: "demo keys not configured" });
+  try {
+    tlog("app", `--- step: ${req.params.step} ---`, {});
+    const r = await fn();
+    res.json({ ok: true, ...JSON.parse(JSON.stringify(r ?? {}, (_k, v) => (typeof v === "bigint" ? v.toString() : v))) });
+  } catch (e) {
+    tlog("app", `step failed: ${revertName(e)}`, {});
+    res.status(400).json({ ok: false, error: revertName(e) });
   }
 });
 

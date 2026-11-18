@@ -80,9 +80,31 @@ cp .env.example .env.local
 npm run dev                              # http://localhost:3000
 ```
 
+## Demo walkthrough
+
+Open **http://localhost:3000/console** ("Under the hood"). The left side steps through the scenario. The right side is a live terminal fed by the server, with color-coded layers: `app`, `chain`, `stream` (QuickNode), `risk`, `voice` (ElevenLabs), `relay` (signatures) and `contract`.
+
+| Step | Click | What the terminal shows |
+|---|---|---|
+| 1. Normal day | Run "Normal day" | `pay()` call → tx mined → `InstantPayment`. Trusted + under limit = instant |
+| 2. The scam | Run "The scam" | `pay()` → **HELD as action #n** → `ActionQueued` event arrives (poller or QuickNode) → risk scored HIGH with reasons → guardian alerted |
+| 3. The deepfake | Run "The deepfake" | EIP-712 decision received → `recoveredSigner` ≠ `vaultGuardian` (`match: false`) → **decideBySig REVERTED: BadSignature** |
+| 4. The real guardian | Run "The real guardian" | Signature from the guardian's key (`match: true`) → cancelled → vault balance unchanged |
+| 5. The workaround | Run "The workaround" | `requestGuardian(scammer)` is itself held → guardian cancels it |
+
+Then show the consumer side:
+
+1. **`/`** (Mom's wallet): send $20 to *Grandson Leo* (instant), then $2,000 to any new `0x` address (held).
+2. **`/guardian`** (open on a phone or a second window): the held payment appears with its warning signs and a countdown. Tap **Answer** for the ElevenLabs voice briefing. Tap **"try approving with a cloned voice"** to see it rejected. Tap **Stop payment**.
+3. **`/steal`**: anyone enters an address and tries to drain the honeypot; the counter goes up and "Stolen" stays $0.
+
+Suggested video order (2–3 min): `/steal` counter as the hook → Mom's wallet scam → guardian phone rings and voice explains → cloned voice rejected → Stop → `/console` replay for the technical audience → architecture slide.
+
+Resetting a local demo: stop `anvil`, start it again, rerun `DeployLocal.s.sol` (same addresses every time) and restart the server.
+
 ## Deploy to Arc testnet
 
-1. Create three keys: deployer/relayer, owner ("Mom"), guardian. Fund the relayer and owner from https://faucet.circle.com (Arc testnet). USDC is Arc's gas token.
+1. Create three keys: deployer/relayer, owner ("Mom"), guardian. Fund the relayer and owner from https://faucet.circle.com (select Arc Testnet). USDC is Arc's gas token. If the faucet fails, try the Circle Developer Console faucet or ask in the hackathon Telegram. Only the relayer and owner need funds; the guardian never pays gas.
 2. Deploy, using the RPC URL from https://docs.arc.io (Connect to Arc):
    ```bash
    cd contracts
