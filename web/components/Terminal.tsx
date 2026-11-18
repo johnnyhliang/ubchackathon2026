@@ -30,7 +30,9 @@ export function Terminal({ title, className = "", fresh = false }: { title: stri
     return () => es.close();
   }, [fresh]);
 
-  useEffect(() => endRef.current?.scrollIntoView({ block: "nearest" }), [lines]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "nearest" });
+  }, [lines]);
 
   return (
     <section className={`flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 font-code text-[12.5px] text-zinc-200 shadow-xl ${className}`}>

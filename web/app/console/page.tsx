@@ -66,7 +66,9 @@ export default function ConsolePage() {
     return () => es.close();
   }, []);
 
-  useEffect(() => endRef.current?.scrollIntoView({ block: "nearest" }), [lines]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "nearest" });
+  }, [lines]);
 
   async function run(key: string) {
     setRunning(key);
