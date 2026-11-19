@@ -1,0 +1,51 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{width:1500px;height:1000px;overflow:hidden;font-family:"Instrument Sans",sans-serif;
+ background:radial-gradient(1200px 700px at 75% 15%,#2a3a6b 0%,#141d3d 45%,#0a0f24 100%);color:#f4f1ea;position:relative}
+.moon{position:absolute;right:140px;top:90px;width:150px;height:150px;border-radius:50%;background:#f6e9c4;box-shadow:0 0 90px 30px rgba(246,233,196,.25)}
+.moon:after{content:"";position:absolute;left:38px;top:-12px;width:150px;height:150px;border-radius:50%;background:#1b2650}
+.star{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff;opacity:.8}
+.hills{position:absolute;bottom:0;left:0;width:100%}
+.left{position:absolute;left:110px;top:150px;width:640px}
+.brand{font-family:"Instrument Serif",serif;font-size:64px;letter-spacing:.5px;opacity:.95}
+h1{font-size:96px;line-height:1;font-weight:700;margin-top:60px;letter-spacing:-2px}
+h1 span{color:#f2c46d}
+p.sub{font-size:34px;margin-top:36px;color:#c9cfe6;line-height:1.3}
+.phone{position:absolute;right:190px;top:150px;width:380px;height:720px;border-radius:56px;background:#0b0f1f;
+ border:10px solid #1f2640;box-shadow:0 40px 80px rgba(0,0,0,.6);padding:60px 30px;transform:rotate(6deg)}
+.call{font-size:22px;color:#9aa3c4;text-align:center}
+.who{font-size:44px;font-weight:700;text-align:center;margin-top:12px}
+.avatar{width:120px;height:120px;border-radius:50%;margin:36px auto 0;background:#f2c46d;display:flex;align-items:center;justify-content:center;font-size:64px}
+.bubble{margin-top:40px;background:#fff;color:#141414;border-radius:24px;padding:22px 24px;font-size:27px;line-height:1.3;font-weight:600}
+.bubble small{display:block;font-weight:400;color:#666;font-size:19px;margin-top:8px}
+.stamp{position:absolute;right:150px;top:790px;transform:rotate(-10deg);border:9px solid #f2c46d;color:#f2c46d;
+ font-size:96px;font-weight:700;letter-spacing:8px;padding:6px 34px;border-radius:18px;background:rgba(10,15,36,.55);
+ box-shadow:0 0 40px rgba(242,196,109,.35)}
+.chip{position:absolute;left:110px;bottom:80px;display:flex;gap:14px}
+.chip div{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:10px 22px;font-size:22px;color:#dfe3f2}
+</style></head><body>
+<div class="moon"></div>
+<div class="star" style="left:820px;top:80px"></div><div class="star" style="left:960px;top:170px"></div>
+<div class="star" style="left:1080px;top:60px"></div><div class="star" style="left:700px;top:110px"></div>
+<div class="star" style="left:1400px;top:300px"></div><div class="star" style="left:900px;top:300px;opacity:.5"></div>
+<svg class="hills" viewBox="0 0 1500 260" preserveAspectRatio="none" height="260">
+ <path d="M0 160 Q300 70 600 150 T1200 130 T1500 120 V260 H0Z" fill="#101833"/>
+ <path d="M0 210 Q400 140 800 200 T1500 190 V260 H0Z" fill="#070b1a"/>
+</svg>
+<div class="left">
+ <div class="brand">Pause</div>
+ <h1>Nice voice.<br><span>Wrong key.</span></h1>
+ <p class="sub">A USDC wallet that a cloned voice can't talk out of your money.</p>
+</div>
+<div class="phone">
+ <div class="call">incoming call</div>
+ <div class="who">"Grandson" Leo</div>
+ <div class="avatar">🧢</div>
+ <div class="bubble">"Grandma it's me!! I'm in jail, send $2,000 USDC to this new address 🙏"<small>sounds exactly like him</small></div>
+</div>
+<div class="stamp">PAUSED</div>
+<div class="chip"><div>Arc</div><div>ElevenLabs</div><div>QuickNode</div></div>
+</body></html>
