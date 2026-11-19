@@ -137,8 +137,8 @@ Resetting a local demo: stop `anvil`, start it again, rerun `DeployLocal.s.sol` 
 | Contract | Address |
 |---|---|
 | USDC (Arc native, ERC-20 interface) | `0x3600000000000000000000000000000000000000` |
-| GuardianVault (family demo) | [`0x8a03B3383C0b21C3fE95C1A2198e71723d3395da`](https://testnet.arcscan.app/address/0x8a03B3383C0b21C3fE95C1A2198e71723d3395da) |
-| GuardianVault (honeypot) | [`0x7A42C08ED0cF53116296785Dd97EC52D1914c607`](https://testnet.arcscan.app/address/0x7A42C08ED0cF53116296785Dd97EC52D1914c607) |
+| GuardianVault (family demo) | [`0x1d623326c71F28AcA7E00C0274ae9d94913BD7B5`](https://testnet.arcscan.app/address/0x1d623326c71F28AcA7E00C0274ae9d94913BD7B5) |
+| GuardianVault (honeypot) | [`0xdADBF921beAd72C374107C473f5157FDD3E6afd1`](https://testnet.arcscan.app/address/0xdADBF921beAd72C374107C473f5157FDD3E6afd1) |
 
 Family vault settings: $2 instant daily limit, 10-minute hold. Honeypot: no instant limit, so every withdrawal is held.
 

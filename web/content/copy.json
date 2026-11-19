@@ -2,7 +2,7 @@
   "_readme": "All site text lives here. Edit and save; the dev server hot-reloads. {curly} words are filled in by the app, keep them. **double stars** make text bold.",
   "site": {
     "title": "Pause",
-    "description": "Unusual payments wait while someone you trust takes a look.",
+    "description": "2fa for payments",
     "nav": {
       "story": "The story",
       "overview": "Overview",
@@ -16,9 +16,9 @@
     }
   },
   "landing": {
-    "heroLine1": "Scammers rush.",
-    "heroLine2": "We make them wait.",
-    "heroSub": "Unusual payments hold for ten minutes while someone you trust takes a look. A cloned voice can't approve them.",
+    "heroLine1": "Don't get scammed",
+    "heroLine2": "",
+    "heroSub": "Unusual payments hold for ten minutes, and even a deepfaked voice can't confirm the transaction",
     "cardLabel": "Mom is sending",
     "heldBadge": "Held · {time}",
     "fallbackReasons": [
@@ -46,7 +46,7 @@
     ],
     "proofTitle": "We handed out the keys",
     "proofBody": "The demo wallet holds real testnet dollars, and anyone can use its owner key to send them anywhere.",
-    "proofAttempts": "{n} people have tried so far. None of them got a cent.",
+    "proofAttempts": "{n} people have tried so far with not a cent missing.",
     "proofNoAttempts": "Nobody has managed to take a cent.",
     "ctaSteal": "Try to steal it",
     "ctaClone": "Clone a voice",
@@ -72,8 +72,8 @@
   },
   "guardian": {
     "title": "You're Mom's guardian",
-    "sub": "You can stop or approve her held payments. You can never move her money yourself.",
-    "quiet": "All quiet. Nothing is waiting for you.",
+    "sub": "You can stop or approve her held payments, but you can never move her money yourself.",
+    "quiet": "Nothing is waiting for you.",
     "history": "History",
     "approved": "Approved and sent.",
     "stopped": "Stopped. The money stays in Mom's wallet.",

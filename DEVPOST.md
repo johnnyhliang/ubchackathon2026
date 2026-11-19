@@ -5,8 +5,8 @@
 **Links**
 - Live app: https://pause-six-theta.vercel.app
 - Code: https://github.com/johnnyhliang/ubchackathon2026
-- Family vault on Arc testnet: https://testnet.arcscan.app/address/0x8a03B3383C0b21C3fE95C1A2198e71723d3395da
-- Honeypot vault: https://testnet.arcscan.app/address/0x7A42C08ED0cF53116296785Dd97EC52D1914c607
+- Family vault on Arc testnet: https://testnet.arcscan.app/address/0x1d623326c71F28AcA7E00C0274ae9d94913BD7B5
+- Honeypot vault: https://testnet.arcscan.app/address/0xdADBF921beAd72C374107C473f5157FDD3E6afd1
 
 ---
 
@@ -34,6 +34,7 @@ Pause is a vault for USDC on Arc.
 - **A cloned voice can't approve anything.** The tap produces an EIP-712 signature from the guardian's own device, and the contract checks it. A scammer who perfectly copies the guardian's voice still has no key, so their "approval" is rejected on-chain.
 - **The guardian can't steal.** They can stop or approve, but there is no function that lets them move the money themselves.
 - **Removing the protection is protected too.** Changing the guardian, raising the limit, or trusting a new address is held for the guardian, so a scammer can't talk you into switching it off first.
+- **The guardian can't trap you either.** You can always move everything to your own recovery address after 7 days, and the guardian can't cancel it. A thief with your key can only send the money home.
 
 There's also a public honeypot vault with about $300 in it. Anyone can try to drain it at `/steal`. The counter of attempts goes up; the amount stolen stays at $0.
 
@@ -47,7 +48,7 @@ There's also a public honeypot vault with about $300 in it. Anyone can try to dr
 
 ## How I built it
 
-- **Contract (Solidity, Foundry):** `GuardianVault` holds Arc's native USDC through its ERC-20 interface. Owner actions are either instant or queued with a delay. The guardian decides directly or by a relayed EIP-712 signature (`decideBySig`), verified with OpenZeppelin's `SignatureChecker`, so the guardian can also be a smart-contract wallet such as a passkey account. 15 tests.
+- **Contract (Solidity, Foundry):** `GuardianVault` holds Arc's native USDC through its ERC-20 interface. Owner actions are either instant or queued with a delay. The guardian decides directly or by a relayed EIP-712 signature (`decideBySig`), verified with OpenZeppelin's `SignatureChecker`, so the guardian can also be a smart-contract wallet such as a passkey account. 19 tests, including an escape hatch: the owner can always move everything to a fixed recovery address after 7 days, and the guardian cannot cancel it, so a hostile guardian can slow you down but never trap your money.
 - **Arc:** everything is in dollars. Balances, limits and gas are all USDC, so a non-crypto user never sees another token. A relayer pays gas for guardian decisions, so the guardian needs no funds at all.
 - **QuickNode Streams:** a Stream on Arc testnet receipts, filtered to the vaults' logs, pushes every held payment to the server by webhook. Alerts fire in order without the server polling the chain.
 - **ElevenLabs:** an Agents voice assistant briefs the guardian, using the payment details as dynamic variables. It deliberately has no tool that can approve or cancel; the voice informs, only the signed tap decides. The `/clone` demo uses Instant Voice Cloning and text-to-speech to attack the vault with a real copy of a volunteer's voice.
