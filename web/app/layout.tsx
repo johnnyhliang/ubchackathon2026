@@ -1,3 +1,4 @@
+import { C } from "@/lib/copy";
 import type { Metadata } from "next";
 import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import Link from "next/link";
@@ -7,17 +8,21 @@ const instrument = Instrument_Sans({ variable: "--font-instrument", subsets: ["l
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Pause",
-  description: "Unusual payments wait while someone you trust takes a look.",
+  title: C.site.title,
+  description: C.site.description,
 };
 
 const nav = [
-  { href: "/wallet", label: "Wallet" },
-  { href: "/guardian", label: "Guardian" },
-  { href: "/steal", label: "Steal it" },
-  { href: "/console", label: "Under the hood" },
-  { href: "/clone", label: "Clone a voice" },
-  { href: "/wallets", label: "Balances" },
+  { href: "/", label: C.site.nav.story },
+  { href: "/clone", label: C.site.nav.clone },
+  { href: "/steal", label: C.site.nav.steal },
+];
+const explore = [
+  { href: "/overview", label: C.site.nav.overview },
+  { href: "/wallet", label: C.site.nav.wallet },
+  { href: "/guardian", label: C.site.nav.guardian },
+  { href: "/console", label: C.site.nav.console },
+  { href: "/wallets", label: C.site.nav.wallets },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -37,6 +42,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {n.label}
               </Link>
             ))}
+            <details className="relative">
+              <summary className="cursor-pointer list-none rounded-lg px-3 py-1.5 font-medium text-on-night-muted hover:bg-white/10 hover:text-on-night">{C.site.nav.explore} ▾</summary>
+              <div className="absolute right-0 mt-2 w-48 rounded-xl border border-white/10 bg-[#141a30] p-1.5 shadow-xl">
+                {explore.map((n) => (
+                  <Link key={n.href} href={n.href} className="block rounded-lg px-3 py-1.5 text-on-night-muted hover:bg-white/10 hover:text-on-night">{n.label}</Link>
+                ))}
+              </div>
+            </details>
           </nav>
         </header>
         <main className="relative mx-auto max-w-3xl px-4 pb-24 pt-8">{children}</main>

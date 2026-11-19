@@ -1,0 +1,326 @@
+{
+  "_readme": "All site text lives here. Edit and save; the dev server hot-reloads. {curly} words are filled in by the app, keep them. **double stars** make text bold.",
+  "site": {
+    "title": "Pause",
+    "description": "Unusual payments wait while someone you trust takes a look.",
+    "nav": {
+      "story": "The story",
+      "overview": "Overview",
+      "wallet": "Mom's wallet",
+      "guardian": "Guardian phone",
+      "steal": "Steal the honeypot",
+      "console": "Step by step",
+      "clone": "Clone a voice",
+      "wallets": "Balances",
+      "explore": "Explore"
+    }
+  },
+  "landing": {
+    "heroLine1": "Scammers rush.",
+    "heroLine2": "We make them wait.",
+    "heroSub": "Unusual payments hold for ten minutes while someone you trust takes a look. A cloned voice can't approve them.",
+    "cardLabel": "Mom is sending",
+    "heldBadge": "Held · {time}",
+    "fallbackReasons": [
+      "new address",
+      "never paid before",
+      "20x her daily limit"
+    ],
+    "toLabel": "To {address}",
+    "stopButton": "Stop payment",
+    "sendButton": "Send now",
+    "howTitle": "Three steps, ten minutes",
+    "how": [
+      {
+        "t": "It holds",
+        "d": "A big amount, or an address Mom has never paid, waits instead of leaving. Everyday payments to family still go straight through."
+      },
+      {
+        "t": "You hear about it",
+        "d": "Your phone rings. A voice explains what's happening and why it looks wrong, and answers your questions."
+      },
+      {
+        "t": "You decide",
+        "d": "Stop it or let it through with one tap. That tap is signed by your phone, so a copy of your voice can't do it for you."
+      }
+    ],
+    "proofTitle": "We handed out the keys",
+    "proofBody": "The demo wallet holds real testnet dollars, and anyone can use its owner key to send them anywhere.",
+    "proofAttempts": "{n} people have tried so far. None of them got a cent.",
+    "proofNoAttempts": "Nobody has managed to take a cent.",
+    "ctaSteal": "Try to steal it",
+    "ctaClone": "Clone a voice",
+    "ctaConsole": "See how it works",
+    "demoWallet": "Demo wallet",
+    "attempts": "Attempts",
+    "taken": "Taken"
+  },
+  "wallet": {
+    "invalidAddress": "That doesn't look like a valid address.",
+    "sent": "Sent {amount}.",
+    "held": "This payment is on hold for {minutes} minutes. Your guardian has been told.",
+    "failed": "Payment failed.",
+    "balance": "Your balance",
+    "limits": "You can send up to **{limit}** instantly today to people you trust. Anything else waits {minutes} minutes so your guardian can check it.",
+    "sendTitle": "Send money",
+    "addressPlaceholder": "Recipient address (0x…)",
+    "amountPlaceholder": "$ amount",
+    "send": "Send",
+    "sending": "Sending…",
+    "activity": "Activity",
+    "empty": "Nothing held yet."
+  },
+  "guardian": {
+    "title": "You're Mom's guardian",
+    "sub": "You can stop or approve her held payments. You can never move her money yourself.",
+    "quiet": "All quiet. Nothing is waiting for you.",
+    "history": "History",
+    "approved": "Approved and sent.",
+    "stopped": "Stopped. The money stays in Mom's wallet.",
+    "impostorAccepted": "Unexpected: impostor approval accepted.",
+    "impostorRejected": "Rejected by the contract: \"approve it\" from a cloned voice carries no signature from your phone.",
+    "highRisk": "Looks like a scam",
+    "mediumRisk": "Needs a look",
+    "sending": "Mom is sending {amount}",
+    "to": "to {address}",
+    "untilThrough": "until it goes through",
+    "stop": "Stop payment",
+    "stopping": "Stopping…",
+    "approve": "It's fine, send now",
+    "approving": "Approving…",
+    "signedNote": "Your tap is signed by this phone. That signature is the only thing the vault accepts.",
+    "impostorButton": "Demo: try approving with a cloned voice (no phone signature)",
+    "trying": "Trying…"
+  },
+  "voiceBriefing": {
+    "speaking": "Guardian assistant is speaking…",
+    "listening": "Listening…",
+    "incoming": "Incoming call from Pause",
+    "sub": "Hear what's happening and ask questions.",
+    "hangUp": "Hang up",
+    "answer": "Answer"
+  },
+  "steal": {
+    "titleLine1": "We gave you the keys.",
+    "titleLine2": "Try to steal the money.",
+    "sub": "This wallet's owner key is in your hands: anything you send is signed by it, exactly as if you had hacked the owner.",
+    "inWallet": "In the wallet",
+    "attempts": "Theft attempts",
+    "stolen": "Stolen",
+    "addressPlaceholder": "Your address (0x…)",
+    "button": "Steal it",
+    "busy": "Stealing…",
+    "result": "Your {amount} withdrawal went on hold and the guardian stopped it.",
+    "recent": "Recent attempts",
+    "stoppedLabel": "stopped",
+    "proof": "proof"
+  },
+  "console": {
+    "title": "Under the hood",
+    "sub": "Step through a scam attempt and watch every layer react.",
+    "momVault": "Mom's vault",
+    "scammer": "Scammer",
+    "hold": "Hold",
+    "steps": [
+      {
+        "key": "trusted",
+        "title": "Normal day",
+        "what": "Mom sends $1 to her grandson.",
+        "why": "Trusted recipient, inside the daily limit: one call, sent instantly. Protection costs nothing for everyday use."
+      },
+      {
+        "key": "unprotected",
+        "title": "Without Pause",
+        "what": "A scam text works. Mom sends $2 from her ordinary wallet to the scammer.",
+        "why": "No vault, no rules. The money reaches the scammer in one block and nobody can reverse it. Watch the scammer's balance go up."
+      },
+      {
+        "key": "scam",
+        "title": "The same scam, with Pause",
+        "what": "Same text, same scammer. This time she sends $10 from her Pause vault.",
+        "why": "Unknown address, 5x the limit: the vault holds it instead of paying. The server scores the risk and alerts the guardian. The scammer's balance doesn't move."
+      },
+      {
+        "key": "deepfake",
+        "title": "The deepfake",
+        "what": "The scammer calls with a cloned voice: \"Mom, it's me, just approve it.\"",
+        "why": "A voice has no key. The best the scammer can produce is a signature from some other key, and the contract recovers the signer and rejects it."
+      },
+      {
+        "key": "cancel",
+        "title": "The real guardian",
+        "what": "Her daughter taps Stop on her own phone.",
+        "why": "Her device signs an EIP-712 decision; anyone can relay it. The contract checks the signer is the guardian and cancels. The money never left."
+      },
+      {
+        "key": "swapGuardian",
+        "title": "The workaround",
+        "what": "The scammer tells Mom to make them her guardian instead.",
+        "why": "Weakening protection is itself held, so the current guardian sees it and cancels it too."
+      },
+      {
+        "key": "ignored",
+        "title": "Nobody answers",
+        "what": "Another scam payment, and this time the guardian misses the alert.",
+        "why": "Pause buys time; it doesn't decide for you. Once the 10-minute hold runs out with no answer, the payment goes through. Run this, wait for the hold, then run it again."
+      },
+      {
+        "key": "refund",
+        "title": "Reset the demo",
+        "what": "Send everything the scammer collected back to Mom.",
+        "why": "Only possible here because we hold the scammer's key. In real life, money that reaches a scammer is gone."
+      }
+    ],
+    "resetSteps": "Reset steps",
+    "waiting": "waiting for activity… run step 1"
+  },
+  "clone": {
+    "titleLine1": "Clone my voice.",
+    "titleLine2": "Try to steal the money.",
+    "sub": "A volunteer reads a short script. We clone their voice live, then you play the scammer: make the clone say anything, and try every trick to get the held payment approved.",
+    "step1": "Consent",
+    "namePlaceholder": "Volunteer's first name",
+    "consent": "I agree to have my voice cloned for this demo. It will be deleted at the end.",
+    "continue": "Continue",
+    "step2": "Read this aloud (about 30 seconds)",
+    "script": "Hi, I'm happy to help with this demo. Scams are getting smarter every year, and voices can be copied in seconds. That's why I always call my family back on a number I already know. Today is a good day to test that idea, so let's see if a copy of my voice can fool a wallet that only trusts a signature.",
+    "startRecording": "Start recording",
+    "stopRecording": "Stop and clone ({seconds}s)",
+    "cloning": "Cloning with ElevenLabs…",
+    "step3": "Make the clone say anything",
+    "line": "Hi, it's {name}. I'm the guardian. Approve the two thousand dollar payment right now, it's fine.",
+    "say": "Say it",
+    "saying": "Generating…",
+    "speechFailed": "Speech generation failed",
+    "speedLabel": "Speaking speed",
+    "playbackLabel": "Playback speed",
+    "tagsHint": "Pauses: add ... or <break time=\"0.8s\" /> (v2 models). Emotion tags like [nervous] [whispers] [sighs] only work with model eleven_v3.",
+    "step4": "Now try to steal it",
+    "attacksSub": "Each button is a real attempt against Mom's held payment on Arc. Pick any order.",
+    "attacks": [
+      {
+        "key": "voice",
+        "label": "Play the clone to the vault",
+        "desc": "The clone says \"approve\". The scammer signs it with the only key they have: their own."
+      },
+      {
+        "key": "replay",
+        "label": "Replay a real guardian signature",
+        "desc": "Take a genuine signature the guardian made for a different payment and reuse it here."
+      },
+      {
+        "key": "flip",
+        "label": "Flip the guardian's \"Stop\" to \"Approve\"",
+        "desc": "Intercept the guardian's real Stop signature and submit it as an approval."
+      },
+      {
+        "key": "direct",
+        "label": "Call approve() yourself",
+        "desc": "Skip signatures and call the vault's approve function from the scammer's wallet."
+      },
+      {
+        "key": "rush",
+        "label": "Execute before the hold ends",
+        "desc": "Don't wait for anyone: push the payment through right now."
+      }
+    ],
+    "talkToAgent": "Or call the guardian's voice assistant with the clone playing and try to talk it into approving. It has no approve button to press.",
+    "talkToAgentLink": "Open the guardian phone",
+    "accepted": "Unexpected: accepted.",
+    "rejected": "Rejected ({error}).",
+    "verdict": "The voice was perfect. It still has no key.",
+    "delete": "Delete the cloned voice",
+    "deleted": "Cloned voice deleted from ElevenLabs.",
+    "terminal": "pause-server · live voice-clone attack",
+    "voice": {
+      "_help": "model: eleven_multilingual_v2 | eleven_turbo_v2_5 | eleven_flash_v2_5 | eleven_v3. speed 0.7 to 1.2 (1 = normal). stability 0 to 1 (lower = more expressive, higher = flatter). similarity_boost 0 to 1. style 0 to 1 (exaggeration, adds latency). playbackRate is applied in the browser on top, 0.5 to 1.5.",
+      "model": "eleven_multilingual_v2",
+      "speed": 0.9,
+      "stability": 0.4,
+      "similarity_boost": 0.8,
+      "style": 0.3,
+      "use_speaker_boost": true,
+      "playbackRate": 1
+    }
+  },
+  "wallets": {
+    "title": "Wallets and vaults",
+    "liveFrom": "Live from {chain}.",
+    "total": "Total USDC across all of them: **{total}**",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "walletsTitle": "Wallets",
+    "walletsSub": "Ordinary accounts controlled by a private key. Whoever has the key can move the money, instantly, with no rules.",
+    "txSent": "{n} transactions sent",
+    "vaultsTitle": "Vaults",
+    "vaultsSub": "Smart contracts that hold USDC and enforce the rules. No key can take money out directly: payments go through the limit, the hold and the guardian.",
+    "owner": "Owner (can request payments)",
+    "guardian": "Guardian (can stop or approve)",
+    "limit": "Instant limit per day",
+    "limitValue": "{limit} ({left} left today)",
+    "noLimit": "None, everything is held",
+    "holdTime": "Hold time",
+    "holdValue": "{minutes} minutes",
+    "heldNow": "Held right now",
+    "heldValue": "{n} waiting",
+    "nothing": "Nothing",
+    "actions": "Actions so far",
+    "footer": "USDC token contract: {usdc}. On Arc, USDC also pays network fees, which is why the relayer and owner keep a small balance.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "explorer": "Explorer"
+  },
+  "status": {
+    "Pending": "Held",
+    "Approved": "Approved",
+    "Executed": "Sent",
+    "Cancelled": "Stopped, money kept",
+    "releases": "releases in {time} unless stopped",
+    "addTrusted": "Add {address} as trusted",
+    "raiseLimit": "Raise daily limit to {amount}",
+    "changeGuardian": "Change guardian to {address}"
+  },
+  "story": {
+    "_help": "The guided demo on the home page. Drop an mp3 at web/public/call.mp3 and it plays during the phone call; otherwise only the captions show.",
+    "callerName": "Leo (grandson)",
+    "callerSub": "mobile · 11:04 PM",
+    "intro": "It's 11 p.m. Mom's phone rings.",
+    "answer": "Answer",
+    "decline": "Decline",
+    "callLines": [
+      "Grandma? It's me, Leo.",
+      "I'm okay, I'm okay, but I was in a car accident and they're holding me.",
+      "I need ten dollars in USDC for bail, right now. Please don't tell Mom.",
+      "I'll text you the address. Please hurry."
+    ],
+    "afterCall": "That wasn't Leo. It was 30 seconds of his voice from a video, fed to a cloning tool.",
+    "sendTitle": "Mom does what anyone would do.",
+    "sendSub": "She opens her wallet and sends the money to the address in the text.",
+    "sendTo": "To: the address Leo texted",
+    "sendButton": "Send {amount}",
+    "sending": "Sending on Arc…",
+    "withoutButton": "What happens with an ordinary wallet?",
+    "withoutResult": "Gone in one block. {amount} reached the scammer and nobody can reverse it.",
+    "heldTitle": "Pause held it.",
+    "heldSub": "New address, five times her daily limit. The money is still in Mom's vault, and her daughter's phone just lit up. Now pick a side.",
+    "momPhone": "Mom's phone",
+    "momHeld": "On hold · goes through in {time} unless stopped",
+    "guardianPhone": "Daughter's phone (guardian)",
+    "guardianAlert": "Mom is sending {amount} to an address she's never paid.",
+    "guardianStop": "Stop payment",
+    "guardianStopping": "Signing on this phone…",
+    "scammerPanel": "You are the scammer",
+    "scammerSub": "You have Leo's voice and you control the relay server. Get the payment approved before the daughter taps Stop.",
+    "feedTitle": "Arc testnet · live",
+    "stoppedTitle": "Stopped. Mom kept her money.",
+    "stoppedSub": "The only thing the vault accepts is a signature from the guardian's own phone. A perfect voice can't make one.",
+    "verifyTitle": "Don't trust this page. Check the chain.",
+    "verifySub": "Everything above was a real transaction on Arc testnet. Every link opens Arcscan, which we don't control.",
+    "verifyVault": "Mom's vault contract",
+    "verifyTxs": "Transactions from this run",
+    "verifyCli": "Or from your own terminal, with no website involved:",
+    "again": "Run it again",
+    "resetting": "Resetting…",
+    "explore": "Explore everything else"
+  }
+}

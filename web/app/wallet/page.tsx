@@ -1,4 +1,5 @@
 "use client";
+import { C, fill, Rich } from "@/lib/copy";
 import { useState } from "react";
 import { isAddress, type Address } from "viem";
 import { ownerPay } from "@/lib/chain";
@@ -27,7 +28,7 @@ export default function WalletPage() {
 
   async function send() {
     if (!v) return;
-    if (!isAddress(to)) return setMsg({ tone: "stop", text: "That doesn't look like a valid address." });
+    if (!isAddress(to)) return setMsg({ tone: "stop", text: C.wallet.invalidAddress });
     setBusy(true);
     setMsg(null);
     try {
@@ -36,16 +37,16 @@ export default function WalletPage() {
       const instant = r.instant;
       setMsg(
         instant
-          ? { tone: "safe", text: `Sent ${fmtUsd(Number(amount))}.` }
+          ? { tone: "safe", text: fill(C.wallet.sent, { amount: fmtUsd(Number(amount)) }) }
           : {
               tone: "held",
-              text: `This payment is on hold for ${Math.round(v.delaySeconds / 60)} minutes. Your guardian has been told.`,
+              text: fill(C.wallet.held, { minutes: Math.round(v.delaySeconds / 60) }),
             }
       );
       setAmount("");
       refresh();
     } catch (e) {
-      setMsg({ tone: "stop", text: (e as { shortMessage?: string }).shortMessage ?? "Payment failed." });
+      setMsg({ tone: "stop", text: (e as { shortMessage?: string }).shortMessage ?? C.wallet.failed });
     } finally {
       setBusy(false);
     }
@@ -55,18 +56,17 @@ export default function WalletPage() {
     <div className="space-y-5">
       {error && <p className="text-sm text-stop">{error}</p>}
       <Card>
-        <div className="text-sm text-muted">Your balance</div>
+        <div className="text-sm text-muted">{C.wallet.balance}</div>
         <div className="font-serif text-6xl">{v ? fmtUsd(v.balanceUsd) : "—"}</div>
         {v && (
           <p className="mt-2 text-sm text-muted">
-            You can send up to <b className="text-ink">{fmtUsd(v.remainingTodayUsd)}</b> instantly today to people you trust.
-            Anything else waits {Math.round(v.delaySeconds / 60)} minutes so your guardian can check it.
+            <Rich s={C.wallet.limits} vars={{ limit: fmtUsd(v.remainingTodayUsd), minutes: Math.round(v.delaySeconds / 60) }} />
           </p>
         )}
       </Card>
 
       <Card>
-        <h2 className="mb-3 font-serif text-2xl">Send money</h2>
+        <h2 className="mb-3 font-serif text-2xl">{C.wallet.sendTitle}</h2>
         {CONTACTS.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
             {CONTACTS.map((c) => (
@@ -84,13 +84,13 @@ export default function WalletPage() {
           <input
             value={to}
             onChange={(e) => setTo(e.target.value.trim())}
-            placeholder="Recipient address (0x…)"
+            placeholder={C.wallet.addressPlaceholder}
             className="min-w-0 flex-1 rounded-xl border border-line bg-paper px-3 py-2.5 font-mono text-sm"
           />
           <input
             value={amount}
             onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-            placeholder="$ amount"
+            placeholder={C.wallet.amountPlaceholder}
             inputMode="decimal"
             className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 sm:w-32"
           />
@@ -99,16 +99,16 @@ export default function WalletPage() {
             disabled={busy || !amount || !to}
             className="rounded-xl bg-ink px-5 py-2.5 font-medium text-paper disabled:opacity-40"
           >
-            {busy ? "Sending…" : "Send"}
+            {busy ? C.wallet.sending : C.wallet.send}
           </button>
         </div>
         {msg && <p className={`mt-3 text-sm text-${msg.tone}`}>{msg.text}</p>}
       </Card>
 
       <Card>
-        <h2 className="mb-1 font-serif text-2xl">Activity</h2>
+        <h2 className="mb-1 font-serif text-2xl">{C.wallet.activity}</h2>
         {actions.length === 0 ? (
-          <p className="text-sm text-muted">Nothing held yet.</p>
+          <p className="text-sm text-muted">{C.wallet.empty}</p>
         ) : (
           <ul>
             {actions.map((a) => (

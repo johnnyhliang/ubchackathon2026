@@ -1,4 +1,5 @@
 "use client";
+import { C } from "@/lib/copy";
 import { useState } from "react";
 import { useConversation } from "@elevenlabs/react";
 import { SERVER } from "@/lib/chain";
@@ -45,17 +46,17 @@ export function VoiceBriefing({ a, secondsLeft }: { a: Action; secondsLeft: numb
         <div className="flex items-center gap-3">
           <span className={`grid h-9 w-9 place-items-center rounded-full bg-[#fff4d6] ${live ? "" : "ring"}`} aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9a5a00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg></span>
           <div className="text-sm">
-            <div className="font-medium">{live ? (convo.isSpeaking ? "Guardian assistant is speaking…" : "Listening…") : "Incoming call from Pause"}</div>
-            <div className="text-xs text-muted">Hear what&apos;s happening and ask questions.</div>
+            <div className="font-medium">{live ? (convo.isSpeaking ? C.voiceBriefing.speaking : C.voiceBriefing.listening) : C.voiceBriefing.incoming}</div>
+            <div className="text-xs text-muted">{C.voiceBriefing.sub}</div>
           </div>
         </div>
         {live ? (
           <button onClick={() => convo.endSession()} className="rounded-full border border-line px-4 py-1.5 text-sm">
-            Hang up
+            {C.voiceBriefing.hangUp}
           </button>
         ) : (
           <button onClick={start} className="rounded-full bg-ink px-4 py-1.5 text-sm font-semibold text-paper">
-            Answer
+            {C.voiceBriefing.answer}
           </button>
         )}
       </div>

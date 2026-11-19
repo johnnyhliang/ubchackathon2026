@@ -1,4 +1,5 @@
 "use client";
+import { C, fill } from "@/lib/copy";
 import { useState } from "react";
 import { ConversationProvider } from "@elevenlabs/react";
 import { guardianDecide, impostorKey, signAndRelay } from "@/lib/chain";
@@ -24,15 +25,15 @@ function Guardian() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-serif text-4xl">You&apos;re Mom&apos;s guardian</h1>
+        <h1 className="font-serif text-4xl">{C.guardian.title}</h1>
         <p className="text-sm text-muted">
-          You can stop or approve her held payments. You can never move her money yourself.
+          {C.guardian.sub}
         </p>
       </div>
 
       {pending.length === 0 && (
         <Card>
-          <p className="text-muted">All quiet. Nothing is waiting for you.</p>
+          <p className="text-muted">{C.guardian.quiet}</p>
         </Card>
       )}
 
@@ -42,7 +43,7 @@ function Guardian() {
 
       {past.length > 0 && (
         <Card>
-          <h2 className="mb-1 font-serif text-2xl">History</h2>
+          <h2 className="mb-1 font-serif text-2xl">{C.guardian.history}</h2>
           <ul>
             {past.map((a) => (
               <ActionRow key={a.id} a={a} now={now} explorer={state!.explorer} />
@@ -64,7 +65,7 @@ function HeldCard({ a, now, explorer, onDone }: { a: Action; now: number; explor
     setBusy(null);
     setResult(
       r.ok
-        ? { tone: approve ? "safe" : "stop", text: approve ? "Approved and sent." : "Stopped. The money stays in Mom's wallet.", hash: r.execHash ?? r.hash }
+        ? { tone: approve ? "safe" : "stop", text: approve ? C.guardian.approved : C.guardian.stopped, hash: r.execHash ?? r.hash }
         : { tone: "stop", text: r.error ?? "Failed" }
     );
     onDone();
@@ -77,8 +78,8 @@ function HeldCard({ a, now, explorer, onDone }: { a: Action; now: number; explor
     setBusy(null);
     setResult(
       r.ok
-        ? { tone: "stop", text: "Unexpected: impostor approval accepted." }
-        : { tone: "safe", text: "Rejected by the contract: \"approve it\" from a cloned voice carries no signature from your phone." }
+        ? { tone: "stop", text: C.guardian.impostorAccepted }
+        : { tone: "safe", text: C.guardian.impostorRejected, hash: r.hash }
     );
   }
 
@@ -88,16 +89,16 @@ function HeldCard({ a, now, explorer, onDone }: { a: Action; now: number; explor
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className={`text-xs font-semibold uppercase tracking-wide ${high ? "text-stop" : "text-held"}`}>
-            {high ? "Looks like a scam" : "Needs a look"}
+            {high ? C.guardian.highRisk : C.guardian.mediumRisk}
           </div>
           <div className="mt-1 font-serif text-3xl">
-            {a.kind === "Transfer" ? `Mom is sending ${fmtUsd(a.amountUsd)}` : a.summary}
+            {a.kind === "Transfer" ? fill(C.guardian.sending, { amount: fmtUsd(a.amountUsd) }) : a.summary}
           </div>
-          {a.kind === "Transfer" && <div className="font-mono text-sm text-muted">to {short(a.target)}</div>}
+          {a.kind === "Transfer" && <div className="font-mono text-sm text-muted">{fill(C.guardian.to, { address: short(a.target) })}</div>}
         </div>
         <div className="text-right">
           <div className="font-mono text-2xl tabular-nums">{countdown(a.readyAt, now)}</div>
-          <div className="text-xs text-muted">until it goes through</div>
+          <div className="text-xs text-muted">{C.guardian.untilThrough}</div>
         </div>
       </div>
 
@@ -119,20 +120,20 @@ function HeldCard({ a, now, explorer, onDone }: { a: Action; now: number; explor
           disabled={!!busy}
           className="rounded-xl bg-ink px-4 py-3 font-semibold text-paper disabled:opacity-50"
         >
-          {busy === "cancel" ? "Stopping…" : "Stop payment"}
+          {busy === "cancel" ? C.guardian.stopping : C.guardian.stop}
         </button>
         <button
           onClick={() => decide(true)}
           disabled={!!busy}
           className="rounded-xl border border-line px-4 py-3 font-medium disabled:opacity-50"
         >
-          {busy === "approve" ? "Approving…" : "It's fine, send now"}
+          {busy === "approve" ? C.guardian.approving : C.guardian.approve}
         </button>
       </div>
-      <p className="mt-2 text-center text-xs text-muted">Your tap is signed by this phone. That signature is the only thing the vault accepts.</p>
+      <p className="mt-2 text-center text-xs text-muted">{C.guardian.signedNote}</p>
 
       <button onClick={impostor} disabled={!!busy} className="mt-3 w-full text-xs text-muted underline">
-        {busy === "impostor" ? "Trying…" : "Demo: try approving with a cloned voice (no phone signature)"}
+        {busy === "impostor" ? C.guardian.trying : C.guardian.impostorButton}
       </button>
 
       {result && (

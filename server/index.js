@@ -345,9 +345,15 @@ async function relay(id, approve, deadline, signature) {
   try {
     await logSignature(VAULTS.family, id, approve, deadline, signature);
     const hash = await wallet.writeContract({
-      address: VAULTS.family, abi, functionName: "decideBySig", args: [BigInt(id), approve, deadline, signature],
+      address: VAULTS.family, abi, functionName: "decideBySig", args: [BigInt(id), approve, deadline, signature], gas: 300000n,
     });
-    await pub.waitForTransactionReceipt({ hash });
+    const rcpt = await pub.waitForTransactionReceipt({ hash });
+    if (rcpt.status !== "success") {
+      const why = await pub.simulateContract({ account: wallet.account, address: VAULTS.family, abi, functionName: "decideBySig", args: [BigInt(id), approve, deadline, signature] })
+        .then(() => "reverted", revertName);
+      tlog("contract", `decideBySig REVERTED on-chain: ${why}`, { action: String(id), tx: hash });
+      return { ok: false, error: why, hash };
+    }
     tlog("contract", `decideBySig accepted: action #${id} ${approve ? "approved" : "cancelled"}`, { tx: hash });
     return { ok: true, hash };
   } catch (e) {
@@ -494,13 +500,15 @@ app.post("/clone/create", express.raw({ type: "audio/*", limit: "20mb" }), async
 
 app.post("/clone/speak", async (req, res) => {
   try {
-    const { voiceId, text } = req.body;
+    const { voiceId, text, model, settings } = req.body;
     if (!clones.has(voiceId)) throw new Error("unknown clone");
-    tlog("voice", `cloned voice says: "${text}"`, { endpoint: `POST /v1/text-to-speech/${voiceId}` });
+    // Optional ElevenLabs voice_settings: speed (0.7-1.2), stability, similarity_boost, style, use_speaker_boost.
+    const voice_settings = settings && typeof settings === "object" ? settings : undefined;
+    tlog("voice", `cloned voice says: "${text}"`, { endpoint: `POST /v1/text-to-speech/${voiceId}`, model: model ?? "default", voice_settings });
     const r = await fetch(`${EL}/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
       method: "POST",
       headers: { "xi-api-key": elKey(), "Content-Type": "application/json" },
-      body: JSON.stringify({ text, model_id: env.ELEVENLABS_TTS_MODEL ?? "eleven_multilingual_v2" }),
+      body: JSON.stringify({ text, model_id: model || env.ELEVENLABS_TTS_MODEL || "eleven_multilingual_v2", voice_settings }),
     });
     if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${await r.text()}`);
     res.set("Content-Type", "audio/mpeg").send(Buffer.from(await r.arrayBuffer()));
@@ -509,18 +517,70 @@ app.post("/clone/speak", async (req, res) => {
   }
 });
 
-// The clone tries to approve the held scam payment (creating one if needed).
-app.post("/clone/attempt", async (req, res) => {
+// The scammer has a cloned voice and full control of the server-side relay.
+// Each attack is a real attempt against the held payment; the contract decides.
+async function ensureHeld() {
+  if (demo.heldId === null) await STEPS.scam();
+  const held = await pub.readContract({ address: VAULTS.family, abi, functionName: "action", args: [BigInt(demo.heldId)] });
+  if (held.status !== 1) await STEPS.scam();
+  return demo.heldId;
+}
+const rando = () => privateKeyToAccount(generatePrivateKey());
+
+const ATTACKS = {
+  // The voice says "approve"; the best a scammer can sign with is a key they own.
+  async voice(id) {
+    tlog("voice", "cloned voice demands approval; scammer signs with their own key", { bestTheScammerHas: "a key they control" });
+    const { deadline, signature } = await signDecision(generatePrivateKey(), id, true);
+    return relay(id, true, deadline, signature);
+  },
+  // Reuse a genuine guardian signature from a different payment.
+  async replay(id) {
+    const other = BigInt(id) > 0n ? BigInt(id) - 1n : BigInt(id) + 1n;
+    tlog("voice", `scammer replays the guardian's real signature from action #${other} onto #${id}`, { note: "signature binds vault + actionId + approve + deadline" });
+    const { deadline, signature } = await signDecision(env.DEMO_GUARDIAN_KEY, other, true);
+    return relay(id, true, deadline, signature);
+  },
+  // Take the guardian's real "Stop" signature and flip it to "approve".
+  async flip(id) {
+    tlog("voice", "scammer intercepts the guardian's real STOP signature and submits it as APPROVE", {});
+    const { deadline, signature } = await signDecision(env.DEMO_GUARDIAN_KEY, id, false);
+    return relay(id, true, deadline, signature);
+  },
+  // Skip signatures entirely and call approve() from the scammer's wallet.
+  async direct(id) {
+    const acct = scammerAccount ?? rando();
+    tlog("relay", `scammer calls GuardianVault.approve(${id}) from their own wallet`, { from: acct.address });
+    try {
+      await pub.simulateContract({ account: acct, address: VAULTS.family, abi, functionName: "approve", args: [BigInt(id)] });
+      return { ok: true };
+    } catch (e) {
+      const why = revertName(e);
+      tlog("contract", `approve REVERTED: ${why}`, { action: String(id) });
+      return { ok: false, error: why };
+    }
+  },
+  // Don't wait for anyone: try to execute the payment before the hold ends.
+  async rush(id) {
+    tlog("relay", `scammer calls GuardianVault.execute(${id}) before the hold ends`, {});
+    try {
+      await pub.simulateContract({ account: wallet.account, address: VAULTS.family, abi, functionName: "execute", args: [BigInt(id)] });
+      return { ok: true };
+    } catch (e) {
+      const why = revertName(e);
+      tlog("contract", `execute REVERTED: ${why}`, { action: String(id) });
+      return { ok: false, error: why };
+    }
+  },
+};
+
+app.post(["/clone/attempt", "/clone/attack/:kind"], async (req, res) => {
   try {
-    if (demo.heldId === null) await STEPS.scam();
-    const held = await pub.readContract({ address: VAULTS.family, abi, functionName: "action", args: [BigInt(demo.heldId)] });
-    if (held.status !== 1) await STEPS.scam();
-    tlog("voice", "the cloned voice demands approval; it can produce sound, not the guardian's key", {
-      bestTheScammerHas: "a signature from a key they control",
-    });
-    const { deadline, signature } = await signDecision(generatePrivateKey(), demo.heldId, true);
-    const r = await relay(demo.heldId, true, deadline, signature);
-    res.json({ ...r, actionId: String(demo.heldId) });
+    const fn = ATTACKS[req.params.kind ?? "voice"];
+    if (!fn) throw new Error("unknown attack");
+    const id = await ensureHeld();
+    const r = await fn(id);
+    res.json({ ...r, actionId: String(id) });
   } catch (e) {
     res.status(400).json({ ok: false, error: revertName(e) });
   }

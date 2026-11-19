@@ -1,4 +1,5 @@
 "use client";
+import { C, fill } from "@/lib/copy";
 import { type Action, countdown, fmtUsd, short } from "@/lib/useVaultState";
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -21,12 +22,7 @@ const statusStyle: Record<Action["status"], string> = {
   Executed: "bg-safe/15 text-safe",
   Cancelled: "bg-stop/15 text-stop",
 };
-const statusLabel: Record<Action["status"], string> = {
-  Pending: "Held",
-  Approved: "Approved",
-  Executed: "Sent",
-  Cancelled: "Stopped, money kept",
-};
+const statusLabel: Record<Action["status"], string> = C.status;
 
 export function StatusPill({ status }: { status: Action["status"] }) {
   return <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusStyle[status]}`}>{statusLabel[status]}</span>;
@@ -37,16 +33,16 @@ export function ActionRow({ a, now, explorer }: { a: Action; now: number; explor
     a.kind === "Transfer"
       ? `${fmtUsd(a.amountUsd)} to ${short(a.target)}`
       : a.kind === "AddTrusted"
-        ? `Add ${short(a.target)} as trusted`
+        ? fill(C.status.addTrusted, { address: short(a.target) })
         : a.kind === "RaiseLimit"
-          ? `Raise daily limit to ${fmtUsd(a.amountUsd)}`
-          : `Change guardian to ${short(a.target)}`;
+          ? fill(C.status.raiseLimit, { amount: fmtUsd(a.amountUsd) })
+          : fill(C.status.changeGuardian, { address: short(a.target) });
   return (
     <li className="flex items-center justify-between gap-3 border-t border-line py-3 first:border-t-0">
       <div className="min-w-0">
         <div className="truncate font-medium">{title}</div>
         <div className="text-xs text-muted">
-          {a.status === "Pending" ? `releases in ${countdown(a.readyAt, now)} unless stopped` : null}{" "}
+          {a.status === "Pending" ? fill(C.status.releases, { time: countdown(a.readyAt, now) }) : null}{" "}
           <TxLink hash={a.executedTx ?? a.cancelledTx ?? a.txHash} explorer={explorer} />
         </div>
       </div>

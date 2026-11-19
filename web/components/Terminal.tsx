@@ -56,7 +56,11 @@ export function Terminal({ title, className = "", fresh = false }: { title: stri
                   <div key={k} className="break-all">
                     <span className="text-zinc-600">{k}:</span>{" "}
                     <span className={k === "match" ? (v ? "text-emerald-400" : "text-red-400") : ""}>
-                      {typeof v === "object" ? JSON.stringify(v) : String(v)}
+                      {typeof v === "string" && /^0x[0-9a-fA-F]{64}$/.test(v) ? (
+                        <a href={`https://testnet.arcscan.app/tx/${v}`} target="_blank" rel="noreferrer" className="underline hover:text-zinc-200">{v} ↗</a>
+                      ) : typeof v === "string" && /^0x[0-9a-fA-F]{40}$/.test(v) ? (
+                        <a href={`https://testnet.arcscan.app/address/${v}`} target="_blank" rel="noreferrer" className="underline hover:text-zinc-200">{v} ↗</a>
+                      ) : typeof v === "object" ? JSON.stringify(v) : String(v)}
                     </span>
                   </div>
                 ))}
