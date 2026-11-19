@@ -18,6 +18,10 @@ import {SignatureChecker} from "openzeppelin-contracts/contracts/utils/cryptogra
 /// Signatures are checked with SignatureChecker, so the guardian may be an EOA or an
 /// ERC-1271 smart account (e.g. a passkey wallet). A voice on a phone call carries no
 /// signature, so a cloned voice cannot approve anything.
+///
+/// Escape hatch: the owner can always move everything to a fixed recovery address
+/// after a long delay that the guardian cannot cancel. A hostile guardian can slow
+/// Mom down but never trap her money; a stolen owner key can only send it home.
 contract GuardianVault is EIP712 {
     using SafeERC20 for IERC20;
 
@@ -49,6 +53,9 @@ contract GuardianVault is EIP712 {
     IERC20 public immutable usdc;
     address public immutable owner;
     address public guardian;
+    address public immutable recovery;
+    uint256 public immutable escapeDelay;
+    uint64 public escapeReadyAt; // 0 = no escape requested
 
     uint256 public delay;
     uint256 public dailyLimit;
@@ -67,6 +74,9 @@ contract GuardianVault is EIP712 {
     event ActionExecuted(uint256 indexed id);
     event TrustedRemoved(address indexed who);
     event DailyLimitLowered(uint256 newLimit);
+    event EscapeRequested(address indexed recovery, uint64 readyAt);
+    event EscapeCancelled();
+    event Escaped(address indexed recovery, uint256 amount);
 
     error NotOwner();
     error NotGuardian();
@@ -75,18 +85,28 @@ contract GuardianVault is EIP712 {
     error Expired();
     error BadSignature();
     error ZeroAddress();
+    error NoEscape();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
         _;
     }
 
-    constructor(IERC20 usdc_, address owner_, address guardian_, uint256 dailyLimit_, uint256 delay_)
-        EIP712("GuardianVault", "1")
-    {
-        if (address(usdc_) == address(0) || owner_ == address(0) || guardian_ == address(0)) {
-            revert ZeroAddress();
-        }
+    constructor(
+        IERC20 usdc_,
+        address owner_,
+        address guardian_,
+        uint256 dailyLimit_,
+        uint256 delay_,
+        address recovery_,
+        uint256 escapeDelay_
+    ) EIP712("GuardianVault", "1") {
+        if (
+            address(usdc_) == address(0) || owner_ == address(0) || guardian_ == address(0)
+                || recovery_ == address(0)
+        ) revert ZeroAddress();
+        recovery = recovery_;
+        escapeDelay = escapeDelay_;
         usdc = usdc_;
         owner = owner_;
         guardian = guardian_;
@@ -134,6 +154,30 @@ contract GuardianVault is EIP712 {
     function requestGuardian(address newGuardian) external onlyOwner returns (uint256) {
         if (newGuardian == address(0)) revert ZeroAddress();
         return _queue(Kind.SetGuardian, newGuardian, 0);
+    }
+
+    // ---------------------------------------------------------- escape hatch
+    /// @notice Start moving everything to `recovery`. The guardian is notified via the
+    ///         event but has no power to cancel it.
+    function requestEscape() external onlyOwner returns (uint64 readyAt) {
+        readyAt = uint64(block.timestamp + escapeDelay);
+        escapeReadyAt = readyAt;
+        emit EscapeRequested(recovery, readyAt);
+    }
+
+    function cancelEscape() external onlyOwner {
+        escapeReadyAt = 0;
+        emit EscapeCancelled();
+    }
+
+    /// @notice Callable by anyone once the escape delay has passed; funds only go to `recovery`.
+    function escape() external {
+        if (escapeReadyAt == 0) revert NoEscape();
+        if (block.timestamp < escapeReadyAt) revert NotReady();
+        escapeReadyAt = 0;
+        uint256 amount = usdc.balanceOf(address(this));
+        usdc.safeTransfer(recovery, amount);
+        emit Escaped(recovery, amount);
     }
 
     // -------------------------------------------------------------- guardian

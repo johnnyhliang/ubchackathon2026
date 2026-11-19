@@ -15,6 +15,7 @@ contract GuardianVaultTest is Test {
     address guardian;
     address grandson = makeAddr("grandson");
     address scammer = makeAddr("scammer");
+    address recovery = makeAddr("recovery");
 
     uint256 constant USD = 1e6;
     uint256 constant DELAY = 10 minutes;
@@ -23,7 +24,7 @@ contract GuardianVaultTest is Test {
         vm.warp(1_800_000_000);
         guardian = vm.addr(guardianKey);
         usdc = new MockUSDC();
-        vault = new GuardianVault(IERC20(address(usdc)), owner, guardian, 100 * USD, DELAY);
+        vault = new GuardianVault(IERC20(address(usdc)), owner, guardian, 100 * USD, DELAY, recovery, 7 days);
         usdc.mint(address(vault), 5_000 * USD);
 
         // trust the grandson (held, guardian approves)
@@ -183,5 +184,58 @@ contract GuardianVaultTest is Test {
         vm.warp(block.timestamp + DELAY);
         vault.execute(id);
         assertEq(vault.guardian(), newGuardian);
+    }
+
+    // ------------------------------------------------------------ escape hatch
+
+    function test_escapeBeatsHostileGuardian() public {
+        // guardian blocks everything, including being replaced
+        vm.prank(owner);
+        (, uint256 pay) = vault.pay(grandson, 1_000 * USD);
+        vm.prank(guardian);
+        vault.cancel(pay);
+        vm.prank(owner);
+        uint256 swap = vault.requestGuardian(makeAddr("newGuardian"));
+        vm.prank(guardian);
+        vault.cancel(swap);
+
+        vm.prank(owner);
+        vault.requestEscape();
+        vm.expectRevert(GuardianVault.NotReady.selector);
+        vault.escape();
+
+        vm.warp(block.timestamp + 7 days);
+        vault.escape();
+        assertEq(usdc.balanceOf(recovery), 5_000 * USD);
+        assertEq(usdc.balanceOf(address(vault)), 0);
+    }
+
+    function test_guardianCannotStopOrTriggerEscape() public {
+        vm.prank(guardian);
+        vm.expectRevert(GuardianVault.NotOwner.selector);
+        vault.cancelEscape();
+        vm.prank(guardian);
+        vm.expectRevert(GuardianVault.NotOwner.selector);
+        vault.requestEscape();
+    }
+
+    function test_stolenOwnerKeyCanOnlyEscapeToRecovery() public {
+        vm.prank(owner); // thief holding the owner key
+        vault.requestEscape();
+        vm.warp(block.timestamp + 7 days);
+        vm.prank(scammer);
+        vault.escape();
+        assertEq(usdc.balanceOf(scammer), 0);
+        assertEq(usdc.balanceOf(recovery), 5_000 * USD);
+    }
+
+    function test_ownerCanCancelEscape() public {
+        vm.startPrank(owner);
+        vault.requestEscape();
+        vault.cancelEscape();
+        vm.stopPrank();
+        vm.warp(block.timestamp + 7 days);
+        vm.expectRevert(GuardianVault.NoEscape.selector);
+        vault.escape();
     }
 }

@@ -16,10 +16,10 @@ contract DeployLocal is Script {
 
         vm.startBroadcast(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80);
         MockUSDC usdc = new MockUSDC();
-        GuardianVault family = new GuardianVault(IERC20(address(usdc)), owner, guardian, 100e6, 10 minutes);
+        GuardianVault family = new GuardianVault(IERC20(address(usdc)), owner, guardian, 100e6, 10 minutes, owner, 7 days);
         // Honeypot: the relayer acts as both owner and guardian so the server can
         // submit strangers' theft attempts and cancel them.
-        GuardianVault honeypot = new GuardianVault(IERC20(address(usdc)), relayer, relayer, 0, 10 minutes);
+        GuardianVault honeypot = new GuardianVault(IERC20(address(usdc)), relayer, relayer, 0, 10 minutes, relayer, 7 days);
         usdc.mint(address(family), 5_000e6);
         usdc.mint(address(honeypot), 1_000e6);
         vm.stopBroadcast();
