@@ -27,8 +27,25 @@ export function walletFor(key: Hex) {
   return createWalletClient({ chain, transport: http(), account });
 }
 
-export const OWNER_KEY = process.env.NEXT_PUBLIC_OWNER_KEY as Hex;
-export const GUARDIAN_KEY = process.env.NEXT_PUBLIC_GUARDIAN_KEY as Hex;
+/** Mom's payment. The server holds her demo key and signs for her. */
+export async function ownerPay(to: Address, amount: string) {
+  const r = await fetch(`${SERVER}/app/pay`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to, amount }),
+  });
+  return (await r.json()) as { ok: boolean; instant?: boolean; error?: string; hash?: string };
+}
+
+/** The real guardian's tap. The server holds the guardian's demo key and signs the EIP-712 decision. */
+export async function guardianDecide(id: string, approve: boolean) {
+  const r = await fetch(`${SERVER}/app/guardian-decide`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, approve }),
+  });
+  return (await r.json()) as { ok: boolean; error?: string; hash?: string; execHash?: string };
+}
 
 export const DECISION_TYPES = {
   Decision: [

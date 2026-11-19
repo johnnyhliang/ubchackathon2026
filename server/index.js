@@ -662,5 +662,32 @@ app.get("/voice/signed-url", async (_req, res) => {
   res.json({ signedUrl: signed_url });
 });
 
+// ------------------------------------------------- app actions (keys stay here)
+// The hosted demo signs for Mom and the guardian server-side so no key ships to the browser.
+app.post("/app/pay", async (req, res) => {
+  try {
+    const to = getAddress(req.body.to);
+    const amount = Number(req.body.amount);
+    if (!(amount > 0)) throw new Error("Enter an amount");
+    const r = await ownerPay(to, amount);
+    res.json({ ok: true, instant: r.instant, id: String(r.id), hash: r.hash });
+  } catch (e) {
+    res.status(400).json({ ok: false, error: e.shortMessage ?? revertName(e) ?? e.message });
+  }
+});
+
+app.post("/app/guardian-decide", async (req, res) => {
+  const { id, approve } = req.body;
+  const { deadline, signature } = await signDecision(env.DEMO_GUARDIAN_KEY, id, Boolean(approve));
+  const r = await relay(id, Boolean(approve), deadline, signature);
+  if (r.ok && approve) {
+    try {
+      r.execHash = await wallet.writeContract({ address: VAULTS.family, abi, functionName: "execute", args: [BigInt(id)] });
+      await pub.waitForTransactionReceipt({ hash: r.execHash });
+    } catch (e) { r.ok = false; r.error = revertName(e); }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+});
+
 const port = Number(env.PORT ?? 8787);
 app.listen(port, () => console.log(`pause server on :${port} (chain ${chain.id})`));

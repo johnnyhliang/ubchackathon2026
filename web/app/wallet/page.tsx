@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
-import { parseUnits, isAddress, type Address } from "viem";
-import { vaultAbi } from "@/lib/abi";
-import { OWNER_KEY, publicClient, walletFor } from "@/lib/chain";
+import { isAddress, type Address } from "viem";
+import { ownerPay } from "@/lib/chain";
 import { fmtUsd, useNow, useVaultState } from "@/lib/useVaultState";
 import { ActionRow, Card } from "@/components/ui";
 
@@ -32,17 +31,9 @@ export default function WalletPage() {
     setBusy(true);
     setMsg(null);
     try {
-      const wallet = walletFor(OWNER_KEY);
-      const { request, result } = await publicClient.simulateContract({
-        account: wallet.account,
-        address: v.address,
-        abi: vaultAbi,
-        functionName: "pay",
-        args: [to as Address, parseUnits(amount || "0", 6)],
-      });
-      const hash = await wallet.writeContract(request);
-      await publicClient.waitForTransactionReceipt({ hash });
-      const [instant] = result;
+      const r = await ownerPay(to as Address, amount || "0");
+      if (!r.ok) throw { shortMessage: r.error };
+      const instant = r.instant;
       setMsg(
         instant
           ? { tone: "safe", text: `Sent ${fmtUsd(Number(amount))}.` }

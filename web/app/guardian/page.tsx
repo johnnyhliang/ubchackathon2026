@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { ConversationProvider } from "@elevenlabs/react";
-import { GUARDIAN_KEY, impostorKey, signAndRelay } from "@/lib/chain";
+import { guardianDecide, impostorKey, signAndRelay } from "@/lib/chain";
 import { type Action, countdown, fmtUsd, short, useNow, useVaultState } from "@/lib/useVaultState";
 import { ActionRow, Card, TxLink } from "@/components/ui";
 import { VoiceBriefing } from "@/components/VoiceBriefing";
@@ -60,7 +60,7 @@ function HeldCard({ a, now, explorer, onDone }: { a: Action; now: number; explor
 
   async function decide(approve: boolean) {
     setBusy(approve ? "approve" : "cancel");
-    const r = await signAndRelay(GUARDIAN_KEY, a.vault, a.id, approve);
+    const r = await guardianDecide(a.id, approve);
     setBusy(null);
     setResult(
       r.ok
