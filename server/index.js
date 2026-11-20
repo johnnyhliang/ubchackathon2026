@@ -221,6 +221,43 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "5mb", type: "application/json" }));
 
+// Rate limits: every one of these routes spends relayer gas or ElevenLabs credits.
+// Per-IP sliding windows plus a global cap, all in memory (fine for one instance).
+app.set("trust proxy", 1);
+const hits = new Map();
+function allow(key, max, windowMs) {
+  const now = Date.now();
+  const list = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+  if (list.length >= max) return false;
+  list.push(now);
+  hits.set(key, list);
+  return true;
+}
+setInterval(() => hits.clear(), 60 * 60 * 1000).unref();
+const LIMITS = [
+  // [path prefix, per-IP per minute, per-IP per hour]
+  ["/clone/create", 2, 6],
+  ["/clone/speak", 10, 60],
+  ["/clone/", 15, 120],
+  ["/demo/", 15, 120],
+  ["/honeypot/", 6, 40],
+  ["/relay/", 15, 120],
+  ["/app/", 15, 120],
+  ["/execute", 10, 60],
+];
+app.use((req, res, next) => {
+  if (req.method !== "POST") return next();
+  const rule = LIMITS.find(([p]) => req.path.startsWith(p));
+  if (!rule) return next();
+  const [prefix, perMin, perHour] = rule;
+  const ip = req.ip ?? "?";
+  const ok = allow(`${ip}|${prefix}|m`, perMin, 60_000) && allow(`${ip}|${prefix}|h`, perHour, 3_600_000)
+    && allow("global", Number(env.GLOBAL_PER_MIN ?? 120), 60_000);
+  if (ok) return next();
+  tlog("app", `rate limited ${prefix} from ${ip.slice(0, 12)}`, {});
+  res.status(429).json({ ok: false, error: "Slow down: too many attempts. Try again in a minute." });
+});
+
 app.get("/stream", (req, res) => {
   res.set({ "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
   res.flushHeaders();
