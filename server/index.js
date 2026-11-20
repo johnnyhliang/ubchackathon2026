@@ -378,9 +378,24 @@ async function signDecision(key, id, approve) {
   return { deadline, signature };
 }
 
+// Failing attempts are mined on purpose so they show on Arcscan, but only while the
+// relayer has money to spare and within an hourly budget. Otherwise we stop at the free
+// simulation, which gives the same revert reason without spending gas.
+const GAS_FLOOR = parseUnits(env.RELAYER_FLOOR_USD ?? "5", 6);
+async function canBurnGas() {
+  if (!allow("onchain-failures", Number(env.ONCHAIN_FAILURES_PER_HOUR ?? 60), 3_600_000)) return false;
+  return (await usdcBalance(wallet.account.address)) > GAS_FLOOR;
+}
+
 async function relay(id, approve, deadline, signature) {
   try {
     await logSignature(VAULTS.family, id, approve, deadline, signature);
+    const sim = await pub.simulateContract({ account: wallet.account, address: VAULTS.family, abi, functionName: "decideBySig", args: [BigInt(id), approve, deadline, signature] })
+      .then(() => null, revertName);
+    if (sim && !(await canBurnGas())) {
+      tlog("contract", `decideBySig REVERTED (simulated, not mined to save gas): ${sim}`, { action: String(id) });
+      return { ok: false, error: sim };
+    }
     const hash = await wallet.writeContract({
       address: VAULTS.family, abi, functionName: "decideBySig", args: [BigInt(id), approve, deadline, signature], gas: 300000n,
     });
