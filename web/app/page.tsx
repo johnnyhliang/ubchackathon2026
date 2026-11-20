@@ -33,21 +33,29 @@ export default function Story() {
   const vault = state?.vaults.family;
   const held = state?.actions.find((a) => a.vaultName === "family" && a.id === heldId);
 
-  // Captions advance on their own during the call.
+  const [audioOn, setAudioOn] = useState(false);
+
+  // Captions follow the audio when call.mp3 plays, otherwise advance on a timer.
   useEffect(() => {
     if (scene !== "call") return;
     if (line >= S.callLines.length) {
-      const t = setTimeout(() => setScene("send"), 2600);
+      const t = setTimeout(() => setScene("send"), 3000);
       return () => clearTimeout(t);
     }
+    if (audioOn) return;
     const t = setTimeout(() => setLine((l) => l + 1), 2800);
     return () => clearTimeout(t);
-  }, [scene, line]);
+  }, [scene, line, audioOn]);
 
   function answer() {
     setScene("call");
     setLine(0);
-    audio.current?.play().catch(() => {});
+    const a = audio.current;
+    if (!a) return;
+    a.currentTime = 0;
+    a.ontimeupdate = () => a.duration && setLine(Math.min(S.callLines.length - 1, Math.floor((a.currentTime / a.duration) * S.callLines.length)));
+    a.onended = () => setLine(S.callLines.length);
+    a.play().then(() => setAudioOn(true)).catch(() => setAudioOn(false));
   }
 
   async function send() {
