@@ -321,6 +321,11 @@
     "verifyCli": "Or from your own terminal, with no website involved:",
     "again": "Run it again",
     "resetting": "Resetting…",
-    "explore": "Explore everything else"
+    "explore": "Explore everything else",
+    "qrTitle": "Be the guardian",
+    "qrSub": "Scan with your phone and stop the payment before the scammer gets it through.",
+    "qrLink": "or open it here",
+    "remoteStop": "Guardian's phone (scanned QR) signs Stop",
+    "remoteApprove": "Guardian let it through"
   }
 }

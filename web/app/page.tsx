@@ -34,6 +34,21 @@ export default function Story() {
   const held = state?.actions.find((a) => a.vaultName === "family" && a.id === heldId);
 
   const [audioOn, setAudioOn] = useState(false);
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+
+  // Someone else's phone (scanned QR) can be the guardian: follow the chain, not this page.
+  useEffect(() => {
+    if (scene !== "held" || !held) return;
+    if (held.status === "Cancelled") {
+      if (held.cancelledTx) addTx({ label: S.remoteStop, hash: held.cancelledTx });
+      setScene("stopped");
+    } else if (held.status === "Executed") {
+      if (held.executedTx) addTx({ label: S.remoteApprove, hash: held.executedTx, failed: true });
+      setScene("stopped");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene, held?.status]);
 
   // Captions follow the audio when call.mp3 plays, otherwise advance on a timer.
   useEffect(() => {
@@ -93,6 +108,7 @@ export default function Story() {
     if (!r.ok) return alert(r.error);
     addTx({ label: "Guardian's phone signs Stop", hash: r.hash });
     setScene("stopped");
+    setHeldId(null);
     refresh();
   }
 
@@ -212,7 +228,16 @@ export default function Story() {
                 <button onClick={stop} disabled={!!busy} className="mt-4 w-full rounded-xl bg-ink py-3 font-semibold text-paper disabled:opacity-50">
                   {busy === "stop" ? S.guardianStopping : S.guardianStop}
                 </button>
-                <Link href="/guardian" target="_blank" className="mt-2 block text-center text-xs text-muted underline">{C.voiceBriefing.incoming} ↗</Link>
+                <div className="mt-4 flex items-center gap-3 rounded-xl bg-paper p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img alt="QR code to the guardian phone" width={96} height={96} className="rounded-md bg-white p-1"
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=192x192&margin=0&data=${encodeURIComponent(origin + "/guardian")}`} />
+                  <div className="text-xs">
+                    <div className="font-semibold text-ink">{S.qrTitle}</div>
+                    <p className="mt-1 text-muted">{S.qrSub}</p>
+                    <Link href="/guardian" target="_blank" className="mt-1 inline-block underline">{S.qrLink} ↗</Link>
+                  </div>
+                </div>
               </Panel>
             </div>
             <Terminal title={S.feedTitle} className="mt-4 h-72" fresh />
